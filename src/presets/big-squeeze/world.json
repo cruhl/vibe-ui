@@ -1,0 +1,199 @@
+{
+  "canon": {
+    "name": "Big Squeeze",
+    "frame": "a wide view of a kid's lemonade stand on a sunny suburban sidewalk, watched by a fixed camera across the street at child height, the whole stand framed in the middle with the sidewalk on both sides, a green lawn and white picket fence behind and a bright blue sky above",
+    "still": "The camera holds perfectly steady on the whole stand for the whole clip while the striped awning flaps gently in the breeze, puffy clouds drift and a little bird hops along the fence",
+    "approach": "In the first half second, {thing} wobbles and swells up with a big cartoon boing",
+    "arrive": "{thing} pops into view {place} with a bouncy cartoon boing",
+    "leave": "{thing} rolls away down the street and out of view",
+    "settle": "In the last second, everything bounces to a stop and the camera holds perfectly steady on the whole stand, every thing in its new place and pose while the awning flaps gently",
+    "ambient": "Birds chirp, ice cubes clink in a pitcher and a bouncy ukulele and kazoo tune plays somewhere down the street",
+    "selectSound": "A cheerful cartoon boing and a slide whistle",
+    "lettering": "a kid's neat hand painted brush lettering in navy blue, sentence case",
+    "style": "bright stop motion claymation, sunny saturated colors",
+    "places": {
+      "street": {
+        "phrase": "Filling the whole view",
+        "order": 0
+      },
+      "sky": {
+        "phrase": "High in the blue sky above the stand",
+        "order": 1
+      },
+      "behind.right": {
+        "phrase": "Behind the picket fence on the right",
+        "order": 2
+      },
+      "left": {
+        "phrase": "On the sidewalk to the left of the stand",
+        "order": 3
+      },
+      "center": {
+        "phrase": "In the middle of the sidewalk",
+        "order": 4
+      },
+      "right": {
+        "phrase": "On the sidewalk to the right of the stand",
+        "order": 5
+      },
+      "lawn": {
+        "phrase": "On the lawn behind the stand on the left",
+        "order": 6
+      },
+      "front": {
+        "phrase": "On the street in the near foreground",
+        "order": 7
+      },
+      "stand.back": {
+        "phrase": "Behind its counter",
+        "order": 1
+      },
+      "stand.counter": {
+        "phrase": "On its counter",
+        "order": 2
+      },
+      "stand.front": {
+        "phrase": "Leaning against its front",
+        "order": 3
+      },
+      "on": {
+        "phrase": "Right on top of it",
+        "order": 4
+      },
+      "held": {
+        "phrase": "Held up high in its arms",
+        "order": 5
+      }
+    },
+    "ladder": [
+      {
+        "mood": "a sleepy little lemonade stand on a quiet sunny morning",
+        "ambient": "",
+        "sound": ""
+      },
+      {
+        "mood": "the customers are getting very strange and business is booming",
+        "ambient": "A short line of curious neighbors peeks over the picket fence holding paper cups",
+        "sound": "A cash register dings again and again"
+      },
+      {
+        "mood": "the lemon machinery is out of control and loving it",
+        "ambient": "Small yellow lemons bounce and roll along the sidewalk",
+        "sound": "Pipes gurgle and a steam whistle toots a happy tune"
+      },
+      {
+        "mood": "the stand is a towering lemonade empire and the whole town wants in",
+        "ambient": "A lemon shaped blimp drifts slowly across the sky trailing a yellow banner",
+        "sound": "A crowd down the street chants and cheers"
+      },
+      {
+        "mood": "the neighborhood is turning into a lemonade theme park",
+        "ambient": "Yellow streamers and lemon balloons float up from every rooftop",
+        "sound": "A brass band plays a bouncy march"
+      },
+      {
+        "mood": "the whole street throws a giant lemonade parade in the kid's honor",
+        "ambient": "Yellow confetti rains down over the whole street",
+        "sound": "A marching band of kazoos plays and a huge crowd cheers"
+      }
+    ],
+    "filler": [
+      "The camera stays fixed across the street, framing the whole stand",
+      "Everything is soft modeling clay with visible thumbprints",
+      "Bright morning sunlight casts soft round shadows on the sidewalk",
+      "Puffy clay clouds drift slowly across the blue sky",
+      "The white picket fence runs straight across behind the stand",
+      "The lawn is bright green and neatly bumpy",
+      "Colors are bold and sunny, lemon yellow, sky blue, grass green and cherry red",
+      "Edges are crisp and the picture is sharp from edge to edge",
+      "The framing stays wide and level on the whole sidewalk",
+      "Shapes are chunky, round and slightly lumpy like handmade clay",
+      "Little clay flowers line the bottom of the fence",
+      "The striped awning is lemon yellow and white",
+      "Small houses with red roofs sit far behind the fence",
+      "Every big thing is easy to see from across the street"
+    ]
+  },
+  "entities": [
+    {
+      "id": "street",
+      "parent": null,
+      "place": "street",
+      "look": "a sunny suburban sidewalk before a green lawn and a white picket fence, small red roofed houses and a bright blue sky behind",
+      "state": null,
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "stand",
+      "parent": null,
+      "place": "center",
+      "look": "a wooden lemonade stand under a striped yellow and white awning",
+      "state": "small, wobbly and hand built",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "kid",
+      "parent": "stand",
+      "place": "stand.back",
+      "look": "a cheerful clay kid in a red cap with huge swim goggles pushed up on the forehead",
+      "state": "smiling and waving",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": "a bright, squeaky, very confident kid's voice"
+    },
+    {
+      "id": "pitcher",
+      "parent": "stand",
+      "place": "stand.counter",
+      "look": "a big glass pitcher of yellow lemonade with ice cubes and lemon slices",
+      "state": "full",
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "sign",
+      "parent": "stand",
+      "place": "stand.front",
+      "look": "a wooden price sign",
+      "state": "small and hand painted",
+      "words": "$price",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "machine",
+      "parent": null,
+      "place": "left",
+      "look": "a homemade lemon machine of shiny copper pipes, a giant hand crank, a funnel heaped with lemons and a little chimney",
+      "state": "quietly ticking",
+      "words": null,
+      "control": "pick",
+      "sound": "Copper pipes tick and gurgle softly",
+      "voice": null
+    },
+    {
+      "id": "tree",
+      "parent": null,
+      "place": "behind.right",
+      "look": "a huge round lemon tree loaded with fat glossy lemons",
+      "state": "standing still in the sun",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    }
+  ],
+  "facts": {
+    "price": "25 cents"
+  }
+}

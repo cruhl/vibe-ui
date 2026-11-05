@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+.dev.vars*
+*.scrawl
+.wrangler/
+node_modules
+dist
+.agent
+.claude
+src/presets/*/moments

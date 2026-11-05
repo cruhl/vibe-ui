@@ -1,0 +1,188 @@
+{
+  "canon": {
+    "name": "Kaiju Attack",
+    "frame": "a wide view of a giant monster attacking a miniature model city in bright afternoon light, watched by a high fixed camera on a rooftop, the whole skyline framed from the street in the near foreground to green hills and a bay behind",
+    "still": "The camera holds perfectly steady on the whole city for the whole clip while the monster breathes heavily, smoke drifts from the rooftops and tiny cars race through the streets below",
+    "approach": "In the first half second, a bright searchlight beam whips across the city and lands on {thing}",
+    "arrive": "{thing} crashes into view {place} in a huge burst of dust",
+    "leave": "{thing} is flung far over the hills and out of view in a puff of dust",
+    "settle": "In the last second, the dust settles and the camera holds perfectly steady on the whole city, the monster, every building and every vehicle in place while thin smoke drifts",
+    "ambient": "Air raid sirens wail far off, the monster rumbles and breathes, and tiny car horns honk in the streets",
+    "selectSound": "A loud dramatic brass stab from a monster movie orchestra",
+    "lettering": "condensed 1960s sans capitals in crisp white",
+    "style": "vivid 1960s monster movie film, saturated colors",
+    "places": {
+      "city": {
+        "phrase": "Filling the whole view",
+        "order": 0
+      },
+      "sky.left": {
+        "phrase": "High in the sky on the left",
+        "order": 1
+      },
+      "sky.right": {
+        "phrase": "High in the sky on the right",
+        "order": 2
+      },
+      "bay": {
+        "phrase": "Rising out of the bay behind the city on the right",
+        "order": 3
+      },
+      "skyline.left": {
+        "phrase": "On the left side of the skyline",
+        "order": 4
+      },
+      "center": {
+        "phrase": "Towering in the middle of the city above the rooftops",
+        "order": 5
+      },
+      "skyline.right": {
+        "phrase": "On the right side of the skyline",
+        "order": 6
+      },
+      "street.left": {
+        "phrase": "On a rooftop in the near left foreground",
+        "order": 7
+      },
+      "street.middle": {
+        "phrase": "On the wide street in the near foreground",
+        "order": 8
+      },
+      "street.right": {
+        "phrase": "On the street in the near right foreground",
+        "order": 9
+      },
+      "on": {
+        "phrase": "Right on top of it",
+        "order": 1
+      },
+      "held": {
+        "phrase": "Held up in its claws",
+        "order": 2
+      },
+      "spikes": {
+        "phrase": "Stuck on its orange back spikes",
+        "order": 3
+      }
+    },
+    "ladder": [
+      {
+        "mood": "a classic giant monster attack, the city terrified and the army on alert",
+        "ambient": "",
+        "sound": ""
+      },
+      {
+        "mood": "the army escalates with bigger and sillier weapons",
+        "ambient": "Searchlights sweep back and forth across the sky behind the monster",
+        "sound": "A booming voice on a loudspeaker orders everyone to stay calm"
+      },
+      {
+        "mood": "the monster is clearly having the best day of its life",
+        "ambient": "Small fires and colorful smoke plumes rise from a few rooftops",
+        "sound": "The monster lets out a happy rumbling purr"
+      },
+      {
+        "mood": "giants arrive to fight: a robot, jets, a second monster from the bay",
+        "ambient": "A squadron of tiny silver jets circles high above the city",
+        "sound": "Fighter jets scream overhead in a tight formation"
+      },
+      {
+        "mood": "the battle becomes an enormous ridiculous spectacle",
+        "ambient": "Fireworks burst in bright colors over the bay behind the city",
+        "sound": "A full orchestra blasts a triumphant monster movie fanfare"
+      },
+      {
+        "mood": "the giants become best friends and the city throws them a parade",
+        "ambient": "Confetti and streamers rain down over the whole city",
+        "sound": "A marching band plays and a huge crowd cheers"
+      }
+    ],
+    "filler": [
+      "The camera stays fixed on the rooftop, framing the whole city",
+      "Model buildings are crisp and toy like with tiny lit windows",
+      "Bright afternoon sunlight casts long shadows across the streets",
+      "Puffy painted clouds drift slowly over the hills",
+      "Tiny cars and buses crowd the streets below",
+      "Thin smoke drifts up from the rooftops into the blue sky",
+      "The bay behind the city glitters in the sun",
+      "Green hills roll along the horizon behind the skyline",
+      "Colors are bold and saturated, reds, blues, greens and purples",
+      "Edges are crisp and the picture is sharp from edge to edge",
+      "The framing stays wide and level on the whole city",
+      "Dust and rubble sparkle where buildings have fallen",
+      "Power lines and water towers dot the low rooftops",
+      "The monster is huge against the skyline, its scales catching the sun",
+      "Billboards and neon signs line the streets",
+      "Tiny flags flutter on the rooftops in the wind"
+    ]
+  },
+  "entities": [
+    {
+      "id": "city",
+      "parent": null,
+      "place": "city",
+      "look": "a sprawling miniature model city of skyscrapers and busy streets, green hills and a blue bay behind",
+      "state": null,
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "monster",
+      "parent": null,
+      "place": "center",
+      "look": "a huge round purple monster with orange back spikes, tiny bat wings, stubby arms and a toothy grin",
+      "state": "looming over the rooftops and grinning",
+      "words": null,
+      "control": "pick",
+      "sound": "The monster breathes with a deep rumbling growl",
+      "voice": "a thunderous, gargling, happy roar"
+    },
+    {
+      "id": "skyscraper",
+      "parent": null,
+      "place": "skyline.left",
+      "look": "a tall blue glass skyscraper with a pointed silver spire",
+      "state": "standing tall",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "helicopter",
+      "parent": null,
+      "place": "sky.right",
+      "look": "a red and white news helicopter with a spinning rotor",
+      "state": "hovering and filming the monster",
+      "words": "NEWS",
+      "control": "pick",
+      "sound": "Helicopter blades chop the air",
+      "voice": null
+    },
+    {
+      "id": "donut-sign",
+      "parent": null,
+      "place": "street.left",
+      "look": "a giant pink frosted donut sign with rainbow sprinkles on a small bakery roof",
+      "state": "spinning slowly",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "tank",
+      "parent": null,
+      "place": "street.right",
+      "look": "a chunky green army tank with a long cannon and a white star on its side",
+      "state": "aiming its cannon up at the monster",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    }
+  ],
+  "facts": {}
+}

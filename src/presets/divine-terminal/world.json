@@ -1,0 +1,241 @@
+{
+  "canon": {
+    "name": "Divine Terminal",
+    "frame": "a full screen view of Divine Terminal, a made up 640 by 480 sixteen color operating system built for God, its interface filling the whole frame edge to edge, seen flat and straight on by a locked static camera, evenly lit",
+    "still": "The screen is perfectly still for the whole clip",
+    "approach": "In the first half second, {thing} flashes bright white in chunky pixels",
+    "arrive": "{thing} blinks open {place} in a flash of holy pixel light, already alive and busy",
+    "leave": "{thing} dissolves into a shower of blocky pixels",
+    "settle": "In the last second everything comes to rest and the screen holds steady as a clean sharp picture, every button and the angel sprite in its place",
+    "ambient": "A low computer hum, with faint choir voices held on one long note far in the background",
+    "selectSound": "A short square wave beep from the computer speaker",
+    "lettering": "small crisp blocky pixel capitals",
+    "style": "flat sixteen color pixel screen capture",
+    "places": {
+      "wallpaper": {
+        "phrase": "Across the whole screen",
+        "order": 0
+      },
+      "top": {
+        "phrase": "Across the very top of the screen",
+        "order": 1
+      },
+      "column.1": {
+        "phrase": "At the top of an evenly spaced column of five buttons down the left half",
+        "order": 2
+      },
+      "column.2": {
+        "phrase": "Second in the button column",
+        "order": 3
+      },
+      "column.3": {
+        "phrase": "In the middle of the button column",
+        "order": 4
+      },
+      "column.4": {
+        "phrase": "Fourth in the button column",
+        "order": 5
+      },
+      "column.5": {
+        "phrase": "At the bottom of the button column",
+        "order": 6
+      },
+      "column.6": {
+        "phrase": "Just below the button column",
+        "order": 7
+      },
+      "right.middle": {
+        "phrase": "On the right half of the screen",
+        "order": 8
+      },
+      "right.bottom": {
+        "phrase": "Near the bottom right corner of the screen",
+        "order": 9
+      },
+      "center": {
+        "phrase": "In the center of the screen, with a clear margin of white on every side",
+        "order": 10
+      },
+      "bar.left": {
+        "phrase": "At the left end of the top bar",
+        "order": 1
+      },
+      "bar.middle": {
+        "phrase": "In the middle of the top bar",
+        "order": 2
+      },
+      "bar.right": {
+        "phrase": "At the right end of the top bar",
+        "order": 3
+      },
+      "title.right": {
+        "phrase": "In the top right corner of the window",
+        "order": 1
+      },
+      "body.top": {
+        "phrase": "Inside the window at the top",
+        "order": 2
+      },
+      "body.left": {
+        "phrase": "Inside the window on the left",
+        "order": 3
+      },
+      "body.middle": {
+        "phrase": "Inside the window in the middle",
+        "order": 4
+      },
+      "body.right": {
+        "phrase": "Inside the window on the right",
+        "order": 5
+      },
+      "body.bottom": {
+        "phrase": "Inside the window near the bottom",
+        "order": 6
+      }
+    },
+    "ladder": [
+      {
+        "mood": "dry, earnest system administration of the universe",
+        "ambient": "",
+        "sound": ""
+      },
+      {
+        "mood": "the angel is quietly impressed",
+        "ambient": "A thin ring of yellow pixels glows above the angel sprite",
+        "sound": "A single soft choir note swells and fades"
+      },
+      {
+        "mood": "creation is getting oddly specific",
+        "ambient": "Tiny pixel ducks float in a neat row across the white background",
+        "sound": "A square wave organ plays three bright rising chords"
+      },
+      {
+        "mood": "the heavens are getting crowded",
+        "ambient": "Small pixel clouds and stars drift across the white background in slow rows",
+        "sound": "A thunderclap rolls out in chunky low beeps"
+      },
+      {
+        "mood": "cosmic paperwork overflows",
+        "ambient": "Pixel loaves of bread pile up along the bottom edge of the screen",
+        "sound": "A full square wave choir sings one long triumphant chord"
+      },
+      {
+        "mood": "the universe celebrates its maker",
+        "ambient": "Golden pixel rays burst from the angel across the whole white screen",
+        "sound": "A booming square wave organ plays under a roaring heavenly choir"
+      }
+    ],
+    "filler": [
+      "Every pixel is a chunky crisp square, like a 640 by 480 screen enlarged to fill the frame",
+      "The palette is limited to sixteen bold classic colors",
+      "Every surface is flat and front facing, like a real desktop screenshot",
+      "The white background is clean and even from edge to edge",
+      "Each button is a solid block of color with a crisp double line border",
+      "The buttons are evenly spaced in one neat column",
+      "All lettering is one small blocky pixel font in capitals, evenly spaced",
+      "The lighting is flat and even from corner to corner",
+      "Edges are hard and stair stepped, with sharp pixel corners",
+      "The angel sprite is small, bright and cleanly outlined",
+      "The whole picture is sharp and steady",
+      "The screen fills the frame edge to edge with a steady exposure",
+      "Lettering is small, crisp and high contrast, with clear space around every word",
+      "The framing stays fixed on the whole screen from start to end"
+    ]
+  },
+  "entities": [
+    {
+      "id": "background",
+      "parent": null,
+      "place": "wallpaper",
+      "look": "a plain white background of chunky low resolution pixels",
+      "state": null,
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "topbar",
+      "parent": null,
+      "place": "top",
+      "look": "a thin dark blue bar spanning the full width",
+      "state": null,
+      "words": "DAY $day",
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "creation",
+      "parent": null,
+      "place": "column.1",
+      "look": "a solid green rectangular button with a white double line border",
+      "state": null,
+      "words": "CREATION",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "prayers",
+      "parent": null,
+      "place": "column.2",
+      "look": "a solid dark blue rectangular button with a white double line border",
+      "state": null,
+      "words": "PRAYERS",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "miracles",
+      "parent": null,
+      "place": "column.3",
+      "look": "a solid dark yellow rectangular button with a black double line border",
+      "state": null,
+      "words": "MIRACLES",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "smite",
+      "parent": null,
+      "place": "column.4",
+      "look": "a solid red rectangular button with a white double line border",
+      "state": null,
+      "words": "SMITE",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "hymns",
+      "parent": null,
+      "place": "column.5",
+      "look": "a solid magenta rectangular button with a white double line border",
+      "state": null,
+      "words": "HYMNS",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "angel",
+      "parent": null,
+      "place": "right.middle",
+      "look": "a small golden pixel angel sprite with white wings",
+      "state": "hovering beside a tiny pixel globe",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    }
+  ],
+  "facts": {
+    "day": "7",
+    "prayers.unanswered": "8,402,117",
+    "things.created": "0",
+    "loaves": "1"
+  }
+}

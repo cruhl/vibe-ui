@@ -1,0 +1,62 @@
+// The public deployment: the built page as static assets, `/jev` for pages on their visitor's own
+// keys, and `/api/*` for hosted play, where the Worker holds the keys as secrets (set with
+// `scripts/deploy.ts --secrets`). Logging stays off. `scripts/deploy.ts` builds, scans and deploys
+// with this file; `--hosted off` deploys with the kill switch thrown.
+{
+  "name": "vibe-ui",
+  "main": "./worker.ts",
+  "compatibility_date": "2026-05-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": false },
+  "assets": {
+    "directory": "../dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/jev", "/jev/*", "/api", "/api/*"],
+  },
+  "vars": {
+    // The kill switch: "on" serves hosted play; anything else turns every hosted route off.
+    "HOSTED": "on",
+    // The Turnstile widget's public site key (invisible mode); its secret is a Worker secret.
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAF1bTNYZGeiFuy8J",
+    // Hosted Reactor sessions one visitor may hold at once, and all visitors together.
+    "VISITOR_SESSIONS": "2",
+    "GLOBAL_SESSIONS": "5",
+    // The longest a hosted session may run before Reactor ends it.
+    "SESSION_SECONDS": "600",
+    // The OpenAI models hosted calls may name, comma separated.
+    "OPENAI_MODELS": "gpt-6-luna",
+    // Daily ceilings on hosted spend, each reset at midnight UTC (deploy/budget.ts meters them).
+    // Past one, its route answers 503 until tomorrow; play on a visitor's own keys is never
+    // metered. OpenAI tokens (input and output) in all, and from any one /24 or IPv6 /48:
+    "DAILY_OPENAI_TOKENS": "40000000",
+    "DAILY_BLOCK_TOKENS": "4000000",
+    // Generated images and sounds, Jev calls, and Reactor session-seconds (each session counted
+    // at its capped length when it starts, and refunded what it did not use when it ends).
+    "DAILY_IMAGES": "3000",
+    "DAILY_JEV": "20000",
+    "DAILY_REACTOR_SECONDS": "72000",
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "SESSIONS", "class_name": "Sessions" },
+      { "name": "BUDGET", "class_name": "Budget" },
+      { "name": "PASSES", "class_name": "Passes" },
+    ],
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Sessions"] },
+    { "tag": "v2", "new_sqlite_classes": ["Budget"] },
+    { "tag": "v3", "new_sqlite_classes": ["Passes"] },
+  ],
+  "kv_namespaces": [{ "binding": "WORLDS", "id": "ade287f23b1e48b2bcd6a88da462e477" }],
+  // Per-visitor request limits, each counted per client address.
+  "ratelimits": [
+    { "name": "LIMIT_PASS", "namespace_id": "4110", "simple": { "limit": 12, "period": 60 } },
+    { "name": "LIMIT_AGENT", "namespace_id": "4101", "simple": { "limit": 120, "period": 60 } },
+    { "name": "LIMIT_JEV", "namespace_id": "4102", "simple": { "limit": 240, "period": 60 } },
+    { "name": "LIMIT_FAL", "namespace_id": "4103", "simple": { "limit": 30, "period": 60 } },
+    { "name": "LIMIT_SESSIONS", "namespace_id": "4104", "simple": { "limit": 20, "period": 60 } },
+    { "name": "LIMIT_WORLDS", "namespace_id": "4105", "simple": { "limit": 30, "period": 60 } },
+  ],
+}

@@ -1,0 +1,4 @@
+dist
+.agent
+pnpm-lock.yaml
+.claude

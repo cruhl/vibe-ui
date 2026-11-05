@@ -1,0 +1,8 @@
+# Served by the Worker's static assets with every page and file. connect-src names each host the
+# page talks to: Reactor's API and its two step and upload buckets, and for own keys OpenAI and
+# fal. The one third-party script and frame are Cloudflare Turnstile's, which hosted play needs
+# for its pass. Zod probes eval once and falls back when refused.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.reactor.inc https://reactor-step-results-n4td.s3.eu-west-3.amazonaws.com https://reactor-uploads-zl7p.s3.eu-west-3.amazonaws.com https://api.openai.com https://fal.run https://fal.media https://*.fal.media; worker-src 'self' blob:; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff

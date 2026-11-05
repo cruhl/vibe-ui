@@ -1,0 +1,178 @@
+{
+  "canon": {
+    "name": "Haunted House",
+    "frame": "a first person view walking through a haunted house at night, filmed at eye height by a steady handheld camera with a natural lens, each room seen in depth with its walls, floor and ceiling, lit by dripping candles and blue moonlight",
+    "still": "The camera stands still at eye height in the middle of the room for the whole clip while candle flames flicker, thin mist curls across the floor and lightning flashes once at a window",
+    "approach": "In the first half second, the camera swings toward {thing} and leans in",
+    "arrive": "the doors fly open in a howling gust of mist and the camera rushes through into {thing}",
+    "leave": "{thing} falls away behind the camera",
+    "settle": "In the last second, the camera steps back and comes to rest at eye height in the middle of the room, a clear steady view of the whole room with everything in it",
+    "ambient": "Wind howls around an old house, rain lashes the windows, candles sputter and floorboards creak",
+    "selectSound": "Slow footsteps creak across old floorboards",
+    "lettering": "small engraved Victorian serif in tarnished brass, Title Case",
+    "style": "35mm horror film, cold blues and candle orange",
+    "places": {
+      "around": {
+        "phrase": "All around the camera",
+        "order": 0
+      },
+      "ceiling": {
+        "phrase": "Hanging from the ceiling",
+        "order": 1
+      },
+      "left": {
+        "phrase": "On the left wall",
+        "order": 2
+      },
+      "ahead": {
+        "phrase": "On the far wall straight ahead",
+        "order": 3
+      },
+      "right": {
+        "phrase": "On the right wall",
+        "order": 4
+      },
+      "ahead.left": {
+        "phrase": "In the far left corner",
+        "order": 5
+      },
+      "ahead.right": {
+        "phrase": "In the far right corner",
+        "order": 6
+      },
+      "middle": {
+        "phrase": "In the middle of the room",
+        "order": 7
+      },
+      "air": {
+        "phrase": "Floating in the air in the middle of the room",
+        "order": 8
+      },
+      "floor": {
+        "phrase": "On the floor in the near foreground",
+        "order": 9
+      }
+    },
+    "ladder": [
+      {
+        "mood": "a creaky old haunted house at night, eerie and quiet, things just starting to stir",
+        "ambient": "",
+        "sound": ""
+      },
+      {
+        "mood": "the house is openly haunted and its ghosts are showing off",
+        "ambient": "Cold white mist pours across the floor and swirls around the furniture",
+        "sound": "A long ghostly moan drifts down from somewhere upstairs"
+      },
+      {
+        "mood": "objects fly, portraits move and ghosts pop out of every room",
+        "ambient": "Small objects float slowly in the air above every table and shelf",
+        "sound": "Heavy chains rattle and drag inside the walls"
+      },
+      {
+        "mood": "the ghosts are competing to scare the visitor and getting theatrical",
+        "ambient": "Pale glowing ghosts peek around the doorframes and drift past in the background",
+        "sound": "A pipe organ somewhere in the house blasts one huge dramatic chord"
+      },
+      {
+        "mood": "the whole house is alive, walls breathing and furniture walking",
+        "ambient": "The walls slowly swell in and out like breathing and lightning flashes nonstop",
+        "sound": "Thunder cracks overhead and the whole house lets out a deep groan"
+      },
+      {
+        "mood": "the ghosts crown the visitor the new master of the house in a howling ceremony",
+        "ambient": "Glowing ghosts bow in a wide ring around the camera under swirling green candlelight",
+        "sound": "A choir of ghosts howls a triumphant fanfare"
+      }
+    ],
+    "filler": [
+      "The camera holds steady at eye height, level and calm",
+      "The room is seen in depth, its floor and ceiling both in view",
+      "Dripping candles throw flickering orange light across the walls",
+      "Cold blue moonlight falls through tall arched windows",
+      "Thick cobwebs hang in the corners and across the furniture",
+      "Peeling black damask wallpaper curls away from the walls",
+      "Thin white mist drifts low across the floorboards",
+      "Dust hangs in the air and catches the candlelight",
+      "The picture is sharp and steady from edge to edge",
+      "Shadows are deep and inky in the corners of the room",
+      "Every door is heavy dark wood with an iron ring handle",
+      "The floorboards are wide, dark and warped with age",
+      "The colors are cold moonlit blue, deep black and candle orange",
+      "Old gilt frames and iron fittings catch small points of light",
+      "Rain streaks down the dark window panes",
+      "The ceiling is high and lost in shadow above the candles",
+      "Ghosts glow a soft pale blue white and leave faint trails",
+      "The framing stays level and centered on the room"
+    ]
+  },
+  "entities": [
+    {
+      "id": "foyer",
+      "parent": null,
+      "place": "around",
+      "look": "a grand dusty foyer with peeling black damask wallpaper, cracked marble floor and thick cobwebs",
+      "state": null,
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "chandelier",
+      "parent": "foyer",
+      "place": "ceiling",
+      "look": "a huge cobwebbed iron chandelier holding dozens of dripping white candles",
+      "state": "flickering pale orange",
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "portrait",
+      "parent": "foyer",
+      "place": "left",
+      "look": "a huge gilt framed oil portrait of a stern old woman in a black lace gown",
+      "state": "staring straight ahead",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": "a cold, crackly, aristocratic old voice"
+    },
+    {
+      "id": "front-doors",
+      "parent": "foyer",
+      "place": "ahead",
+      "look": "a pair of tall black double doors with heavy iron ring handles and carved gargoyle faces",
+      "state": "closed",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "armor",
+      "parent": "foyer",
+      "place": "right",
+      "look": "a rusty full suit of knight armor gripping a long battle axe",
+      "state": "standing at attention with its visor shut",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": "a booming, hollow, echoing metal voice"
+    },
+    {
+      "id": "trunk",
+      "parent": "foyer",
+      "place": "floor",
+      "look": "an old leather steamer trunk with brass corners and thick iron bands",
+      "state": "shut tight, wrapped in heavy iron chains and a big padlock",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    }
+  ],
+  "facts": {}
+}

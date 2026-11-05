@@ -1,0 +1,298 @@
+{
+  "canon": {
+    "name": "Trump OS",
+    "frame": "a full screen view of Trump OS, a made up gold plated presidential operating system, its interface filling the whole frame edge to edge, seen flat and straight on by a locked static camera, evenly lit",
+    "still": "The screen holds steady for the whole clip while the gold banner shimmers and the eagle mascot puffs out its chest",
+    "approach": "In the first half second, {thing} flashes bright gold and sparkles",
+    "arrive": "{thing} bursts open {place} with a bright cash register ring, already roaring with life",
+    "leave": "{thing} spins away in a swirl of gold glitter",
+    "settle": "In the last second everything comes to rest and the screen holds steady as a clean sharp picture of the gold desktop, every icon and button in its place",
+    "ambient": "Quiet casino lobby room tone, with a distant crowd murmuring far away",
+    "selectSound": "A soft gold plated tap with a tiny bright chime",
+    "lettering": "slender, widely spaced high contrast serif capitals, black on gold and gold on red",
+    "style": "glossy flat screen capture, gold, red, royal blue",
+    "places": {
+      "wallpaper": {
+        "phrase": "Across the whole screen",
+        "order": 0
+      },
+      "column.1": {
+        "phrase": "At the top of a narrow, evenly spaced column of five icons along the left edge",
+        "order": 1
+      },
+      "column.2": {
+        "phrase": "Second in the icon column",
+        "order": 2
+      },
+      "column.3": {
+        "phrase": "In the middle of the icon column",
+        "order": 3
+      },
+      "column.4": {
+        "phrase": "Fourth in the icon column",
+        "order": 4
+      },
+      "column.5": {
+        "phrase": "At the bottom of the icon column",
+        "order": 5
+      },
+      "column.6": {
+        "phrase": "Just below the icon column",
+        "order": 6
+      },
+      "right.top": {
+        "phrase": "In the upper right corner of the desktop",
+        "order": 7
+      },
+      "right.bottom": {
+        "phrase": "Near the bottom right corner of the desktop, just above the taskbar",
+        "order": 8
+      },
+      "center": {
+        "phrase": "In the center of the screen, with a clear margin of gold marble on every side",
+        "order": 10
+      },
+      "menu": {
+        "phrase": "Rising from the left end of the taskbar",
+        "order": 11
+      },
+      "bottom": {
+        "phrase": "Along the bottom edge",
+        "order": 20
+      },
+      "bar.left": {
+        "phrase": "At the left end of the taskbar",
+        "order": 1
+      },
+      "bar.middle": {
+        "phrase": "In the middle of the taskbar",
+        "order": 2
+      },
+      "bar.right": {
+        "phrase": "At the right end of the taskbar",
+        "order": 3
+      },
+      "title.right": {
+        "phrase": "In the top right corner of the window",
+        "order": 1
+      },
+      "body.top": {
+        "phrase": "Inside the window at the top",
+        "order": 2
+      },
+      "body.left": {
+        "phrase": "Inside the window on the left",
+        "order": 3
+      },
+      "body.middle": {
+        "phrase": "Inside the window in the middle",
+        "order": 4
+      },
+      "body.right": {
+        "phrase": "Inside the window on the right",
+        "order": 5
+      },
+      "body.bottom": {
+        "phrase": "Inside the window near the bottom",
+        "order": 6
+      },
+      "menu.1": {
+        "phrase": "At the top of the menu",
+        "order": 1
+      },
+      "menu.2": {
+        "phrase": "In the middle of the menu",
+        "order": 2
+      },
+      "menu.3": {
+        "phrase": "At the bottom of the menu",
+        "order": 3
+      },
+      "banner": {
+        "phrase": "Across the top of the desktop",
+        "order": 9
+      },
+      "flood": {
+        "phrase": "Washing across the whole screen in front of everything",
+        "order": 30
+      }
+    },
+    "ladder": [
+      {
+        "mood": "a smug gold presidential desktop that is sure he won everything",
+        "ambient": "",
+        "sound": ""
+      },
+      {
+        "mood": "the OS is nervously spinning bad news as wins",
+        "ambient": "A few small royal blue drips run down the gold marble wallpaper",
+        "sound": "A brass fanfare plays and goes slightly flat"
+      },
+      {
+        "mood": "blue is leaking into everything and the OS pretends it is gold",
+        "ambient": "Royal blue puddles spread slowly across the gold marble",
+        "sound": "A crowd far away boos and then cheers uncertainly"
+      },
+      {
+        "mood": "rage: every app answers with fury, fire and capital letters",
+        "ambient": "Red alert lights flash along the gold frame of the screen",
+        "sound": "A klaxon wails and a cash register rings again and again"
+      },
+      {
+        "mood": "the OS is panicking and covering everything in gold paint",
+        "ambient": "Royal blue water sloshes along the bottom of the desktop over the taskbar",
+        "sound": "Ocean waves crash under a frantic marching band"
+      },
+      {
+        "mood": "a literal blue wave floods the whole OS while the banner insists he is still president",
+        "ambient": "The whole desktop is half underwater in sparkling royal blue water with gold icons bobbing on the surface",
+        "sound": "A huge wave roars while a lone trumpet plays the national anthem"
+      }
+    ],
+    "filler": [
+      "Every surface is flat and front facing, like a real desktop screenshot",
+      "The gold marble has thin, fine gold veins and a polished shine",
+      "Each icon casts a soft deep red velvet shadow",
+      "The gold plaques are smooth and bright with crisp edges",
+      "All lettering is one slender high contrast serif in capitals, widely spaced like a luxury hotel sign",
+      "The lighting is flat and even, like a casino lobby",
+      "The colors are rich gold, deep red velvet, white and royal blue",
+      "The icons are stacked in one narrow column, evenly spaced with clear gold marble between them",
+      "The taskbar has a thick polished gold shine with a bright top edge",
+      "Edges are crisp and the metal surfaces are smooth",
+      "The whole picture is sharp and steady",
+      "The screen fills the frame edge to edge with a steady exposure",
+      "Lettering is small, crisp and high contrast, with clear space around every word",
+      "The framing stays fixed on the whole screen from start to end"
+    ]
+  },
+  "entities": [
+    {
+      "id": "wallpaper",
+      "parent": null,
+      "place": "wallpaper",
+      "look": "polished gold marble with a huge gold presidential eagle seal in the middle",
+      "state": null,
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "banner",
+      "parent": null,
+      "place": "banner",
+      "look": "a long slim polished gold banner with red velvet trim",
+      "state": "gleaming",
+      "words": "$headline",
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "results",
+      "parent": null,
+      "place": "column.1",
+      "look": "a polished gold map of America icon with a red badge above a small gold plaque",
+      "state": "its red badge pulsing",
+      "words": "RESULTS",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "truth",
+      "parent": null,
+      "place": "column.2",
+      "look": "a polished gold speech bubble icon with a red megaphone above a small gold plaque",
+      "state": null,
+      "words": "TRUTH",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "news",
+      "parent": null,
+      "place": "column.3",
+      "look": "a polished gold television icon with rabbit ears above a small gold plaque",
+      "state": null,
+      "words": "NEWS",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "veto",
+      "parent": null,
+      "place": "column.4",
+      "look": "a glossy red rubber stamp icon with a gold handle above a small gold plaque",
+      "state": null,
+      "words": "VETO",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "ballroom",
+      "parent": null,
+      "place": "column.5",
+      "look": "a polished gold crystal chandelier icon above a small gold plaque",
+      "state": null,
+      "words": "BALLROOM",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "eagle",
+      "parent": null,
+      "place": "right.top",
+      "look": "a chubby golden eagle mascot in a tiny red cap",
+      "state": "perched proudly on a red velvet cushion",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": "a breathless, flattering, eager voice"
+    },
+    {
+      "id": "taskbar",
+      "parent": null,
+      "place": "bottom",
+      "look": "a thick shiny gold taskbar running the full width of the screen",
+      "state": null,
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "diet-coke",
+      "parent": "taskbar",
+      "place": "bar.left",
+      "look": "a big glossy red push button on a gold base",
+      "state": null,
+      "words": "DIET COKE",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "clock",
+      "parent": "taskbar",
+      "place": "bar.right",
+      "look": "a small round gold clock",
+      "state": null,
+      "words": "$clock",
+      "control": null,
+      "sound": null,
+      "voice": null
+    }
+  ],
+  "facts": {
+    "headline": "YOU WON BIGLY",
+    "house": "D 247 R 153",
+    "senate": "D 54 R 44",
+    "clock": "6:02 AM"
+  }
+}

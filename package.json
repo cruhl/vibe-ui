@@ -1,0 +1,57 @@
+{
+  "name": "vibe-ui",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Play inside a generated video: click anything in it, and a realtime video model films what happens next.",
+  "license": "MIT",
+  "author": "Conner Ruhl",
+  "homepage": "https://vibe-ui.connerruhl.workers.dev",
+  "type": "module",
+  "packageManager": "pnpm@11.4.0",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "check": "tsc --noEmit && eslint . && prettier --check . && vitest run && vite build && pnpm run scan",
+    "scan": "node --experimental-strip-types --no-warnings scripts/scan-bundle.ts",
+    "ship": "node --experimental-strip-types --no-warnings scripts/deploy.ts",
+    "drive": "node --experimental-strip-types --no-warnings scripts/drive.ts",
+    "scenario-drive": "node --experimental-strip-types --no-warnings scripts/scenario-drive.ts",
+    "bake": "node --experimental-strip-types --no-warnings scripts/bake.ts",
+    "record-ui": "node --experimental-strip-types --no-warnings scripts/record-ui.ts",
+    "key-link": "node --experimental-strip-types --no-warnings scripts/key-link.ts",
+    "report": "node --experimental-strip-types --no-warnings scripts/report.ts",
+    "eval": "node --experimental-strip-types --no-warnings scripts/eval.ts",
+    "eval:builds": "node --experimental-strip-types --no-warnings scripts/eval-builds.ts",
+    "eval:fixture": "node --experimental-strip-types --no-warnings scripts/eval-fixture.ts",
+    "eval:jev": "node --experimental-strip-types --no-warnings scripts/eval-jev.ts",
+    "busy-art": "node --experimental-strip-types --no-warnings scripts/busy-art.ts"
+  },
+  "dependencies": {
+    "@reactor-team/js-sdk": "3.3.0",
+    "openai": "7.43.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7",
+    "zustand": "5.0.16"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "eslint": "10.13.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "jiti": "2.7.0",
+    "playwright": "1.64.1",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.0",
+    "vite": "8.3.5",
+    "vitest": "4.1.12"
+  }
+}

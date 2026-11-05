@@ -1,0 +1,231 @@
+{
+  "canon": {
+    "name": "Caveman OS",
+    "frame": "a full screen view of Caveman OS, a made up operating system for cavemen, its interface filling the whole frame edge to edge, seen flat and straight on by a locked static camera, evenly lit",
+    "still": "The screen is perfectly still for the whole clip",
+    "approach": "In the first half second, {thing} thumps and kicks up a puff of stone dust",
+    "arrive": "{thing} crashes open {place} in a cloud of stone dust, already full of life and motion",
+    "leave": "{thing} crumbles into tumbling pebbles and rolls away",
+    "settle": "In the last second the dust settles, everything comes to rest and the screen holds steady as a clean sharp picture, every icon and button in its place",
+    "ambient": "Low wind moves outside a cave over soft room tone",
+    "selectSound": "A soft hollow stone tap",
+    "lettering": "rough hand carved capitals cut shallow into the surface, pale and dusty",
+    "style": "flat digital screen capture, stone greys, ochre",
+    "places": {
+      "wallpaper": {
+        "phrase": "Across the whole screen",
+        "order": 0
+      },
+      "column.1": {
+        "phrase": "At the top of an evenly spaced column of icons hugging the far left edge",
+        "order": 1
+      },
+      "column.2": {
+        "phrase": "In the middle of the icon column",
+        "order": 2
+      },
+      "column.3": {
+        "phrase": "At the bottom of the icon column",
+        "order": 3
+      },
+      "column.4": {
+        "phrase": "Just below the icon column",
+        "order": 4
+      },
+      "right.top": {
+        "phrase": "Near the top right corner of the desktop",
+        "order": 5
+      },
+      "center": {
+        "phrase": "In the center of the screen, clear of the icon column, with a margin of stone wallpaper on every side",
+        "order": 10
+      },
+      "menu": {
+        "phrase": "Rising from the left end of the taskbar",
+        "order": 11
+      },
+      "bottom": {
+        "phrase": "Along the bottom edge",
+        "order": 20
+      },
+      "bar.left": {
+        "phrase": "At the left end of the slate bar",
+        "order": 1
+      },
+      "bar.middle": {
+        "phrase": "In the middle of the slate bar",
+        "order": 2
+      },
+      "bar.right": {
+        "phrase": "At the right end of the slate bar",
+        "order": 3
+      },
+      "title.right": {
+        "phrase": "In the top right corner of the window",
+        "order": 1
+      },
+      "body.top": {
+        "phrase": "Inside the window at the top",
+        "order": 2
+      },
+      "body.left": {
+        "phrase": "Inside the window on the left",
+        "order": 3
+      },
+      "body.middle": {
+        "phrase": "Inside the window in the middle",
+        "order": 4
+      },
+      "body.right": {
+        "phrase": "Inside the window on the right",
+        "order": 5
+      },
+      "body.bottom": {
+        "phrase": "Inside the window near the bottom",
+        "order": 6
+      },
+      "menu.1": {
+        "phrase": "At the top of the menu",
+        "order": 1
+      },
+      "menu.2": {
+        "phrase": "In the middle of the menu",
+        "order": 2
+      },
+      "menu.3": {
+        "phrase": "At the bottom of the menu",
+        "order": 3
+      }
+    },
+    "ladder": [
+      {
+        "mood": "a sincere, boring productivity tool for cave people",
+        "ambient": "",
+        "sound": ""
+      },
+      {
+        "mood": "the operating system is quietly proud of the user",
+        "ambient": "A tiny carved smiley face is etched into the sundial",
+        "sound": "A distant approving grunt"
+      },
+      {
+        "mood": "the fire is needy and wants attention",
+        "ambient": "Thin curls of grey smoke drift up from the campfire icon",
+        "sound": "A faint hungry crackle comes from the desktop"
+      },
+      {
+        "mood": "the fire has ambitions beyond its window",
+        "ambient": "A warm orange glow lights the stone wallpaper from below",
+        "sound": "A low steady roar of flames"
+      },
+      {
+        "mood": "containment breach, the stone age is getting out of hand",
+        "ambient": "Black scorch marks creep across the edges of the stone wallpaper",
+        "sound": "Rocks tumble and a mammoth trumpets far away"
+      },
+      {
+        "mood": "the stone age ends in glory",
+        "ambient": "The whole stone wallpaper glows orange like the inside of a kiln",
+        "sound": "A choir of deep grunts rises over roaring fire"
+      }
+    ],
+    "filler": [
+      "Every surface is flat and front facing, like a real desktop screenshot",
+      "Edges are crisp and colors are solid and even",
+      "The stone textures are fine grained and sharp",
+      "All lettering is carved by hand, shallow pale grooves in rough capitals",
+      "The lighting is flat and even from corner to corner",
+      "The whole picture is sharp and steady",
+      "The carved icons cast small soft shadows on the stone",
+      "Each icon sits on a clean patch of wallpaper with even spacing",
+      "The slate taskbar has a smooth matte surface with a thin lighter rim",
+      "The ochre paintings are faded and soft behind everything else",
+      "The colors are warm greys, tans and soft orange",
+      "The screen fills the frame edge to edge with a steady exposure",
+      "Lettering is small and carved, with plenty of bare stone around every word",
+      "The framing stays fixed on the whole screen from start to end"
+    ]
+  },
+  "entities": [
+    {
+      "id": "wallpaper",
+      "parent": null,
+      "place": "wallpaper",
+      "look": "rough grey stone wallpaper with chisel marks and faint ochre cave paintings of mammoths",
+      "state": null,
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "fire",
+      "parent": null,
+      "place": "column.1",
+      "look": "a neatly carved stone icon of a small orange campfire",
+      "state": null,
+      "words": "FIRE",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "rock",
+      "parent": null,
+      "place": "column.2",
+      "look": "a neatly carved stone icon of a round grey boulder",
+      "state": null,
+      "words": "ROCK",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "hunt",
+      "parent": null,
+      "place": "column.3",
+      "look": "a neatly carved stone icon of a crossed wooden spear and club",
+      "state": null,
+      "words": "HUNT",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "taskbar",
+      "parent": null,
+      "place": "bottom",
+      "look": "a long flat slab of dark slate running the full width of the screen",
+      "state": null,
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "start",
+      "parent": "taskbar",
+      "place": "bar.left",
+      "look": "a round button carved like a stone wheel",
+      "state": null,
+      "words": "START",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "clock",
+      "parent": "taskbar",
+      "place": "bar.right",
+      "look": "a small sundial clock",
+      "state": "its shadow pointing straight up",
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    }
+  ],
+  "facts": {
+    "fires": "0"
+  }
+}

@@ -1,0 +1,285 @@
+{
+  "canon": {
+    "name": "Windows XD",
+    "frame": "a full screen view of Windows XD, a made up home computer desktop in the style of Windows XP, stretched across the whole wide 16:9 frame, the green hill wallpaper running from the far left edge to the far right edge, seen flat and straight on by a locked static camera, evenly lit",
+    "still": "The screen holds steady for the whole clip while soft white clouds drift slowly over the green hill and a warm startup chime rings out",
+    "approach": "In the first half second, {thing} lights up glossy blue and bounces",
+    "arrive": "{thing} bursts open {place} with a bright chime, already roaring with life",
+    "leave": "{thing} vanishes in a quick swoosh",
+    "settle": "In the last second everything comes to rest and the screen holds steady as a clean sharp picture of the desktop, every icon and button in its place",
+    "ambient": "A computer fan hums softly under the desk while faint suburban birdsong drifts in from outside",
+    "selectSound": "A soft plastic tap from the desk",
+    "lettering": "crisp small Tahoma style sans in Title Case, white on blue and black on gray",
+    "style": "crisp widescreen 16:9 screen capture, saturated colors",
+    "places": {
+      "wallpaper": {
+        "phrase": "Filling the whole screen behind the five icons and the recycle bin",
+        "order": 0
+      },
+      "column.1": {
+        "phrase": "At the top of a single column of exactly five icons hugging the far left edge of the frame",
+        "order": 1
+      },
+      "column.2": {
+        "phrase": "Second in the icon column",
+        "order": 2
+      },
+      "column.3": {
+        "phrase": "In the middle of the icon column",
+        "order": 3
+      },
+      "column.4": {
+        "phrase": "Fourth in the icon column",
+        "order": 4
+      },
+      "column.5": {
+        "phrase": "At the bottom of the icon column",
+        "order": 5
+      },
+      "right.top": {
+        "phrase": "Near the top right corner of the desktop",
+        "order": 7
+      },
+      "right.bottom": {
+        "phrase": "In the far bottom right corner of the frame, just above the taskbar",
+        "order": 8
+      },
+      "center": {
+        "phrase": "In the center of the screen, with a clear margin of wallpaper on every side",
+        "order": 10
+      },
+      "menu": {
+        "phrase": "Rising from the left end of the taskbar",
+        "order": 11
+      },
+      "bottom": {
+        "phrase": "Along the bottom edge",
+        "order": 20
+      },
+      "bar.left": {
+        "phrase": "At the left end of the taskbar",
+        "order": 1
+      },
+      "bar.middle": {
+        "phrase": "In the middle of the taskbar",
+        "order": 2
+      },
+      "bar.right": {
+        "phrase": "At the right end of the taskbar",
+        "order": 3
+      },
+      "title.right": {
+        "phrase": "In the top right corner of the window",
+        "order": 1
+      },
+      "body.top": {
+        "phrase": "Inside the window at the top",
+        "order": 2
+      },
+      "body.left": {
+        "phrase": "Inside the window on the left",
+        "order": 3
+      },
+      "body.middle": {
+        "phrase": "Inside the window in the middle",
+        "order": 4
+      },
+      "body.right": {
+        "phrase": "Inside the window on the right",
+        "order": 5
+      },
+      "body.bottom": {
+        "phrase": "Inside the window near the bottom",
+        "order": 6
+      },
+      "menu.1": {
+        "phrase": "At the top of the menu",
+        "order": 1
+      },
+      "menu.2": {
+        "phrase": "In the middle of the menu",
+        "order": 2
+      },
+      "menu.3": {
+        "phrase": "At the bottom of the menu",
+        "order": 3
+      },
+      "creature": {
+        "phrase": "Towering over the middle of the desktop",
+        "order": 25
+      },
+      "hero": {
+        "phrase": "Charging across the lower middle of the desktop",
+        "order": 26
+      },
+      "flood": {
+        "phrase": "Bursting across the whole screen in front of everything",
+        "order": 30
+      }
+    },
+    "ladder": [
+      {
+        "mood": "a perfect cozy 2003 afternoon on the family computer",
+        "ambient": "",
+        "sound": ""
+      },
+      {
+        "mood": "peak nostalgia, every program a joyful burst",
+        "ambient": "Sunlight glints across the glossy taskbar and icons",
+        "sound": "A dial up modem warbles and screeches faintly in another room"
+      },
+      {
+        "mood": "infected: the virus is spreading and the desktop rots",
+        "ambient": "Glitch stripes flicker across the screen now and then",
+        "sound": "An error ding plays again and again"
+      },
+      {
+        "mood": "all out war: every program is a literal weapon against the monster",
+        "ambient": "Sparks and tiny loose pixels drift across the screen",
+        "sound": "A huge heroic orchestra swells under cartoon crashes"
+      },
+      {
+        "mood": "the computer is fighting back and winning",
+        "ambient": "The whole screen trembles with every impact",
+        "sound": "A crowd of tiny voices cheers from inside the computer"
+      },
+      {
+        "mood": "total victory, the desktop shines brighter than ever",
+        "ambient": "The green hill gleams under a brilliant deep blue sky",
+        "sound": "A triumphant fanfare plays with the startup chime"
+      }
+    ],
+    "filler": [
+      "Every surface is flat and front facing, like a real desktop screenshot",
+      "The wallpaper and taskbar reach the far left and far right edges of the frame",
+      "Each icon label sits just beneath its icon with a soft drop shadow",
+      "The icons are glossy and rounded with smooth bright gradients",
+      "Edges are crisp and colors are rich and saturated",
+      "The lighting is flat and even from corner to corner",
+      "All lettering is the crisp small Tahoma style sans of 2003, in Title Case",
+      "The taskbar has a smooth glossy shine with a lighter top edge",
+      "The colors are bright grass green, deep sky blue and clean white",
+      "Each icon sits on a clean patch of wallpaper with even spacing",
+      "The whole picture is sharp and steady",
+      "The screen fills the frame edge to edge with a steady exposure",
+      "Lettering is small, crisp and high contrast, with clear space around every word",
+      "The framing stays fixed on the whole screen from start to end"
+    ]
+  },
+  "entities": [
+    {
+      "id": "wallpaper",
+      "parent": null,
+      "place": "wallpaper",
+      "look": "a wide panoramic bright green rolling grass hill under a deep blue sky with soft white clouds",
+      "state": null,
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "solitaire",
+      "parent": null,
+      "place": "column.1",
+      "look": "a glossy icon of a fanned stack of playing cards",
+      "state": null,
+      "words": "Solitaire",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "media-player",
+      "parent": null,
+      "place": "column.2",
+      "look": "a glossy round orange and blue play button icon",
+      "state": null,
+      "words": "Media Player",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "messenger",
+      "parent": null,
+      "place": "column.3",
+      "look": "a glossy icon of a small green figure beside a small blue figure",
+      "state": null,
+      "words": "Messenger",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "antivirus",
+      "parent": null,
+      "place": "column.4",
+      "look": "a glossy yellow shield icon with a red check mark",
+      "state": null,
+      "words": "Antivirus",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "defrag",
+      "parent": null,
+      "place": "column.5",
+      "look": "a glossy icon of a small grid of red, blue and white squares",
+      "state": null,
+      "words": "Defrag",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "recycle-bin",
+      "parent": null,
+      "place": "right.bottom",
+      "look": "a glossy see through blue wastebasket icon",
+      "state": null,
+      "words": "Recycle Bin",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "taskbar",
+      "parent": null,
+      "place": "bottom",
+      "look": "a bright blue glossy taskbar running the full width of the frame",
+      "state": null,
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "start",
+      "parent": "taskbar",
+      "place": "bar.left",
+      "look": "a rounded green button with a small four color flag",
+      "state": null,
+      "words": "Start",
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "clock",
+      "parent": "taskbar",
+      "place": "bar.right",
+      "look": "a lighter blue tray with a small digital clock",
+      "state": null,
+      "words": "$clock",
+      "control": null,
+      "sound": null,
+      "voice": null
+    }
+  ],
+  "facts": {
+    "clock": "3:42 PM",
+    "year": "2003"
+  }
+}

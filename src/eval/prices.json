@@ -1,0 +1,13 @@
+{
+  "checked": "2026-11-02",
+  "openAI": {
+    "source": "https://developers.openai.com/api/docs/pricing, standard tier, short context",
+    "gpt-6-luna": { "input": 0.1, "cachedInput": 0.01, "output": 0.5 },
+    "gpt-5.4-nano": { "input": 0.2, "cachedInput": 0.02, "output": 1.25 }
+  },
+  "jev": { "source": "https://docs.typesafe.ai/models", "jev-1.14.0": { "input": 0.042 } },
+  "omni": {
+    "note": "Reactor publishes no per-second price for fast-h3-omni. Set perSecond to your own estimate in dollars per session second, from ready to end, to count Omni in the session total; null leaves it out.",
+    "perSecond": null
+  }
+}

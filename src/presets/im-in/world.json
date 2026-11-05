@@ -1,0 +1,225 @@
+{
+  "canon": {
+    "name": "I'M IN",
+    "frame": "a full screen view of I'M IN, a made up hacker operating system from a 1990s movie thriller, its interface filling the whole frame edge to edge, seen flat and straight on by a locked static camera, evenly lit",
+    "still": "The screen is perfectly still for the whole clip",
+    "approach": "In the first half second, {thing} flares bright green and pulses",
+    "arrive": "{thing} slams open {place} in a burst of green static, already alive with streaming code and flashing readouts",
+    "leave": "{thing} collapses into a thin glowing green line and snaps away",
+    "settle": "In the last second everything comes to rest and the screen holds steady as a clean sharp picture, every icon and button in its place while faint green characters drift down behind it",
+    "ambient": "A deep computer hum with soft electronic chirps",
+    "selectSound": "A sharp electronic chirp",
+    "lettering": "small crisp glowing green monospace capitals",
+    "style": "flat glowing green on black screen capture",
+    "places": {
+      "wallpaper": {
+        "phrase": "Across the whole screen",
+        "order": 0
+      },
+      "top": {
+        "phrase": "Across the very top of the screen",
+        "order": 1
+      },
+      "row.1": {
+        "phrase": "At the left end of an evenly spaced row of four glowing icons across the middle",
+        "order": 2
+      },
+      "row.2": {
+        "phrase": "Second in the icon row",
+        "order": 3
+      },
+      "row.3": {
+        "phrase": "Third in the icon row",
+        "order": 4
+      },
+      "row.4": {
+        "phrase": "At the right end of the icon row",
+        "order": 5
+      },
+      "upper.left": {
+        "phrase": "In the upper left area of the screen, below the top bar",
+        "order": 6
+      },
+      "upper.right": {
+        "phrase": "In the upper right area of the screen, below the top bar",
+        "order": 7
+      },
+      "center": {
+        "phrase": "In the center of the screen, with a clear margin of black on every side",
+        "order": 10
+      },
+      "bottom": {
+        "phrase": "Along the bottom of the screen",
+        "order": 20
+      },
+      "bar.left": {
+        "phrase": "At the left end of the top bar",
+        "order": 1
+      },
+      "bar.middle": {
+        "phrase": "In the middle of the top bar",
+        "order": 2
+      },
+      "bar.right": {
+        "phrase": "At the right end of the top bar",
+        "order": 3
+      },
+      "title.right": {
+        "phrase": "In the top right corner of the window",
+        "order": 1
+      },
+      "body.top": {
+        "phrase": "Inside the window at the top",
+        "order": 2
+      },
+      "body.left": {
+        "phrase": "Inside the window on the left",
+        "order": 3
+      },
+      "body.middle": {
+        "phrase": "Inside the window in the middle",
+        "order": 4
+      },
+      "body.right": {
+        "phrase": "Inside the window on the right",
+        "order": 5
+      },
+      "body.bottom": {
+        "phrase": "Inside the window near the bottom",
+        "order": 6
+      }
+    },
+    "ladder": [
+      {
+        "mood": "a convincing, deadly serious movie hack",
+        "ambient": "",
+        "sound": ""
+      },
+      {
+        "mood": "the hack gets theatrical",
+        "ambient": "Lines of green code scroll faster down the black background",
+        "sound": "A rapid burst of keyboard clatter"
+      },
+      {
+        "mood": "the system is sweating",
+        "ambient": "A thin red warning stripe pulses along the top edge of the screen",
+        "sound": "A rising electronic alarm tone chirps twice"
+      },
+      {
+        "mood": "maximum movie hacking",
+        "ambient": "Huge faint green numbers rain down behind everything in thick columns",
+        "sound": "A deep bass whoosh under rapid beeps"
+      },
+      {
+        "mood": "the hack becomes absurd",
+        "ambient": "Small orange flames flicker along the bottom edge of the black screen",
+        "sound": "A red alarm buzz pulses under frantic typing"
+      },
+      {
+        "mood": "total cinematic meltdown",
+        "ambient": "The whole screen pulses bright green like the heart of a mainframe",
+        "sound": "A dramatic orchestra hit lands over a roaring server fan"
+      }
+    ],
+    "filler": [
+      "Every line of text glows with a soft green phosphor halo",
+      "Faint horizontal scan lines run evenly across the whole screen",
+      "The black background is deep and clean from edge to edge",
+      "Every surface is flat and front facing, like a real screen capture",
+      "The falling green characters are tiny, faint and far behind everything",
+      "The icons glow brightly and sit evenly spaced in one neat row",
+      "All lettering is a crisp monospace in capitals, evenly spaced on a steady grid",
+      "The lighting is flat and even from corner to corner",
+      "The colors are deep black, bright phosphor green and a touch of fire orange",
+      "Edges are crisp and the glow is soft and even",
+      "The whole picture is sharp and steady",
+      "The screen fills the frame edge to edge with a steady exposure",
+      "Lettering is small, crisp and high contrast, with clear space around every word",
+      "The framing stays fixed on the whole screen from start to end"
+    ]
+  },
+  "entities": [
+    {
+      "id": "background",
+      "parent": null,
+      "place": "wallpaper",
+      "look": "a pure black background with faint columns of tiny falling bright green characters",
+      "state": null,
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "topbar",
+      "parent": null,
+      "place": "top",
+      "look": "a thin glowing green bordered bar spanning the full width",
+      "state": null,
+      "words": "SECURE NODE",
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "mainframe",
+      "parent": null,
+      "place": "row.1",
+      "look": "a tall black server tower icon with rows of blinking green lights",
+      "state": null,
+      "words": "MAINFRAME",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "firewall",
+      "parent": null,
+      "place": "row.2",
+      "look": "a brick wall icon with real orange flames leaping off its top",
+      "state": null,
+      "words": "FIREWALL",
+      "control": "pick",
+      "sound": "A faint crackle comes from the burning firewall icon",
+      "voice": null
+    },
+    {
+      "id": "trace",
+      "parent": null,
+      "place": "row.3",
+      "look": "a small green wireframe globe icon",
+      "state": null,
+      "words": "TRACE",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "enhance",
+      "parent": null,
+      "place": "row.4",
+      "look": "a green magnifying glass icon over a pixelated photo",
+      "state": null,
+      "words": "ENHANCE",
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "password",
+      "parent": null,
+      "place": "bottom",
+      "look": "a wide plain black input field with a thin green border and even padding inside",
+      "state": "holding a blinking green block",
+      "words": "PASSWORD",
+      "control": "input",
+      "sound": null,
+      "voice": null
+    }
+  ],
+  "facts": {
+    "access": "denied",
+    "breach": "0 percent",
+    "firewall": "on fire"
+  }
+}

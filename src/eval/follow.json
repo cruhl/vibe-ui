@@ -1,0 +1,53 @@
+{
+  "presets": ["homesick-xp", "im-in", "haunted-house", "big-squeeze"],
+  "sessions": {
+    "follow": [
+      "pick",
+      "tell turn this whole place into a submarine deep under the sea",
+      "pick",
+      "pick",
+      "pick",
+      "tell everyone here is a cat now",
+      "pick",
+      "pick",
+      "tell I grab the controls and we blast forward to the year 3000",
+      "pick",
+      "pick"
+    ],
+    "wander": ["pick", "pick", "pick", "pick", "pick", "pick", "pick", "pick", "pick", "pick"],
+    "long": [
+      "pick",
+      "tell I'm throwing a surprise birthday party here for my grandma Rosa, she turns 90 and arrives soon",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "tell is it going to be ready in time?",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "tell make it even more special for her",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "pick",
+      "tell she's at the door!",
+      "pick",
+      "pick"
+    ]
+  }
+}

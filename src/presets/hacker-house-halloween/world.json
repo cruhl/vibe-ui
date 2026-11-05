@@ -1,0 +1,173 @@
+{
+  "canon": {
+    "name": "Hacker House Halloween",
+    "frame": "a first person view walking through a wild Halloween party in a San Francisco Victorian hacker house at night, filmed at eye height by a steady handheld camera with a natural lens, each space seen in depth, packed with guests in elaborate tech costumes under purple and orange party lights",
+    "still": "The camera stands still at eye height in the middle of the space for the whole clip while party lights pulse purple and orange, guests in costumes dance and laugh in the background and thin fog drifts low",
+    "approach": "In the first half second, the camera swings toward {thing} and leans in",
+    "arrive": "the doors burst open in a blast of purple light and fog and the camera rushes through into {thing}",
+    "leave": "{thing} falls away behind the camera",
+    "settle": "In the last second, the camera steps back and comes to rest at eye height in the middle of the space, a clear steady view of everything in it while the party lights keep pulsing",
+    "ambient": "A thumping house music bassline, a crowd laughing and talking over each other, and foghorns sighing far off across the bay",
+    "selectSound": "A burst of party noise swells as the camera moves in",
+    "lettering": "clean slim startup sans in sentence case, glowing white like a lit sign",
+    "style": "glossy cinematic night film, purple and orange neon",
+    "places": {
+      "around": {
+        "phrase": "All around the camera",
+        "order": 0
+      },
+      "sky": {
+        "phrase": "High in the sky behind everything",
+        "order": 1
+      },
+      "ceiling": {
+        "phrase": "Hanging from the ceiling",
+        "order": 1
+      },
+      "left": {
+        "phrase": "On the left",
+        "order": 2
+      },
+      "ahead": {
+        "phrase": "Straight ahead",
+        "order": 3
+      },
+      "right": {
+        "phrase": "On the right",
+        "order": 4
+      },
+      "ahead.left": {
+        "phrase": "In the far left corner",
+        "order": 5
+      },
+      "ahead.right": {
+        "phrase": "In the far right corner",
+        "order": 6
+      },
+      "middle": {
+        "phrase": "In the middle of the space",
+        "order": 7
+      },
+      "air": {
+        "phrase": "Floating in the air in the middle of the space",
+        "order": 8
+      },
+      "floor": {
+        "phrase": "In the near foreground",
+        "order": 9
+      }
+    },
+    "ladder": [
+      {
+        "mood": "a fun packed San Francisco Halloween party where every guest wants to pitch the newcomer",
+        "ambient": "",
+        "sound": ""
+      },
+      {
+        "mood": "the pitches get physical and the costumes start coming alive",
+        "ambient": "Guests in the background hold their phones high, filming everything",
+        "sound": "A confetti cannon booms and the crowd whoops"
+      },
+      {
+        "mood": "the whole house starts raising money and every object is a startup",
+        "ambient": "Glowing paper term sheets flutter through the air like bats",
+        "sound": "A crowd chants the words seed round over and over"
+      },
+      {
+        "mood": "the party reaches AGI and the house itself comes alive",
+        "ambient": "Every string light and pumpkin in view pulses in sync with the bass",
+        "sound": "A huge synth drop shakes the whole house"
+      },
+      {
+        "mood": "the party crowns the visitor the founder of the year as the house lifts off over the fog",
+        "ambient": "Guests in costumes cheer in a wide ring around the camera under falling confetti",
+        "sound": "The whole party roars and a choir of robotaxi horns plays a fanfare"
+      }
+    ],
+    "filler": [
+      "The camera holds steady at eye height, level and calm",
+      "The space is seen in depth, its floor and its ceiling or sky both in view",
+      "Purple and orange string lights glow along every edge",
+      "Carved pumpkins glow with flickering candles",
+      "Thin fog from a fog machine drifts low across the floor",
+      "Guests in big handmade tech costumes fill the background",
+      "Fake cobwebs stretch across the old Victorian woodwork",
+      "Colored party lights sweep slowly across the walls",
+      "The picture is sharp and steady from edge to edge",
+      "The colors are deep night blue, glowing purple and pumpkin orange",
+      "Faces are lit by phone screens and party lights",
+      "The framing stays level and centered on the space",
+      "Plastic cups and glowing drinks are everywhere",
+      "Tall bay windows show the foggy glittering city outside"
+    ]
+  },
+  "entities": [
+    {
+      "id": "curb",
+      "parent": null,
+      "place": "around",
+      "look": "the sidewalk at the foot of the stoop of a tall Victorian glowing purple and orange, pumpkins on every step",
+      "state": null,
+      "words": null,
+      "control": null,
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "fog",
+      "parent": "curb",
+      "place": "sky",
+      "look": "a huge soft wall of white fog with big sleepy friendly eyes, rolling down the hill behind the house",
+      "state": "drifting slowly, eyes half closed",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": "a slow, deep, sleepy, mellow voice"
+    },
+    {
+      "id": "robotaxi",
+      "parent": "curb",
+      "place": "left",
+      "look": "a white robotaxi with a spinning sensor dome on its roof, draped in a bedsheet ghost costume with two eyeholes",
+      "state": "idling at the curb, hazard lights blinking",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "front-doors",
+      "parent": "curb",
+      "place": "ahead",
+      "look": "a pair of tall purple Victorian front doors at the top of the stoop, party light leaking around them",
+      "state": "shut",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": null
+    },
+    {
+      "id": "doorman",
+      "parent": "curb",
+      "place": "middle",
+      "look": "a huge chill bouncer in a black hoodie holding a glowing tablet beside a red velvet rope",
+      "state": "standing on the stoop with arms crossed",
+      "words": null,
+      "control": "pick",
+      "sound": null,
+      "voice": "a deep, calm, deadpan bouncer voice"
+    },
+    {
+      "id": "billboard",
+      "parent": "curb",
+      "place": "right",
+      "look": "a giant lit billboard high over the rooftops showing a huge smiling cartoon robot mascot",
+      "state": "glowing bright",
+      "words": "Stop hiring humans",
+      "control": "pick",
+      "sound": null,
+      "voice": "a bright, booming, salesy announcer voice"
+    }
+  ],
+  "facts": {}
+}
