@@ -156,13 +156,43 @@ export class SessionPool {
     return slot;
   }
 
+  /** Hears a slot's client, until the slot moves on to a new one. */
   private listen(slot: Slot): void {
-    slot.client.onStatus(() => {
-      this.hooks.onStatus();
+    const client = slot.client;
+    client.onStatus(() => {
+      if (slot.client === client) this.hooks.onStatus();
     });
-    slot.client.onMessage((message) => {
-      this.hooks.onMessage(slot, message);
+    client.onMessage((message) => {
+      if (slot.client === client) this.hooks.onMessage(slot, message);
     });
+  }
+
+  /**
+   * Replaces one wedged session with a fresh one in the same slot: the old session is ended,
+   * which discards whatever it was building, everything it held is forgotten, and the new one
+   * starts at once. Late messages from the old session are ignored.
+   */
+  recycle(slotIndex: number, reason: string): void {
+    const slot = this.slots[slotIndex];
+    if (slot === undefined || !this.hooks.running()) return;
+    record("slot_recycled", { slot: slotIndex, reason, dropped: [...slot.inFlight] });
+    void slot.client.end(reason).catch((error: unknown) => {
+      record("slot_end_failed", { slot: slotIndex, message: String(error) });
+    });
+    slot.readyPromise = new Promise<boolean>((resolve) => {
+      slot.resolveReady = resolve;
+    });
+    slot.ready = false;
+    slot.failed = false;
+    slot.builtOrder = [];
+    slot.playingClipID = null;
+    slot.pendingPlayClipID = null;
+    slot.uploads = new Map();
+    slot.inFlight.clear();
+    slot.client = this.newClient();
+    this.listen(slot);
+    this.startSlot(slot);
+    this.hooks.onStatus();
   }
 
   /**
@@ -385,13 +415,18 @@ export class SessionPool {
     return { sent: true, clipID };
   }
 
-  /** Pops a clip from its slot's queues, letting the slot count it until the pop has landed. */
+  /**
+   * Pops a clip from its slot's queues, letting the slot count it until the pop has landed; a
+   * grace of 0 releases its place at once.
+   */
   pop(slotIndex: number, clipID: string, graceMs: number): void {
     const owner = this.slots[slotIndex];
     if (owner === undefined) return;
-    this.hooks.later(graceMs, () => {
-      owner.inFlight.delete(clipID);
-    });
+    if (graceMs === 0) owner.inFlight.delete(clipID);
+    else
+      this.hooks.later(graceMs, () => {
+        owner.inFlight.delete(clipID);
+      });
     void owner.client.pop(clipID).catch((error: unknown) => {
       record("pop_failed", { clipID, message: String(error) });
     });

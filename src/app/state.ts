@@ -3,6 +3,7 @@ import type { MomentInput, MomentStatus } from "../moments/index.ts";
 import type { SessionStatus } from "../omni/index.ts";
 import type { ElementBox } from "../jev/index.ts";
 import type { PhaseName } from "../liveness/index.ts";
+import type { TypingTarget } from "../overlay/index.ts";
 import type { SlotView } from "../pool/index.ts";
 import type { Scenario } from "../scenario/index.ts";
 import { hashWorld, type View } from "../state/index.ts";
@@ -40,12 +41,14 @@ export interface Progress {
 
 /**
  * Input from a person or a driver: a click on a box by id or at a point (fractions of the frame),
- * typed text, or a direct instruction to the agent.
+ * text typed into an input or into a field that has no input of its own, or a direct instruction
+ * to the agent.
  */
 export type UserInput =
   | { kind: "click"; elementID: string }
   | { kind: "click"; x: number; y: number }
   | { kind: "type"; elementID: string; text: string }
+  | { kind: "type"; field: TypingTarget; text: string }
   | { kind: "instruct"; text: string };
 
 export interface InputRecord {
@@ -111,6 +114,8 @@ export interface AppState {
   shownView: View;
   /** The input whose answer has not reached its first frame yet; every other input waits. */
   locked: string | null;
+  /** Where typing is open after a click on a field, or null; a click on a field is never an action. */
+  typing: TypingTarget | null;
   /** The state the boxes were found for; boxes from any other state are never drawn or hit. */
   boxesKey: string | null;
   /** Paused: nothing new is asked of the agent, built or played, and input is refused. */
@@ -145,6 +150,7 @@ export function initialState(scenario: Scenario): AppState {
     progress: null,
     shownView: scenario.initialView,
     locked: null,
+    typing: null,
     boxesKey: null,
     paused: false,
     localPlayer: null,

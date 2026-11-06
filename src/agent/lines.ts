@@ -1,5 +1,12 @@
 import { forbiddenWords } from "../projector/index.ts";
-import { filmLimits, formatEntity, lineLimits, walk, type World } from "../state/index.ts";
+import {
+  filmLimits,
+  formatEntity,
+  lineLimits,
+  viewLimits,
+  walk,
+  type World,
+} from "../state/index.ts";
 import { fill } from "../text/index.ts";
 import { record } from "../run-log/index.ts";
 import type { MemoryContext } from "../memory/index.ts";
@@ -82,6 +89,7 @@ export function linesInstructions(premise: string, world: World, guesses: number
     frameWords: String(filmLimits.frame),
     styleWords: String(filmLimits.style),
     placeWords: String(filmLimits.place),
+    maxPicks: String(viewLimits.picks),
     negatives: forbiddenWords.negatives.join(", "),
     pointerWords: forbiddenWords.pointer.join(", "),
     premise,
@@ -99,6 +107,8 @@ function describeInput(input: AgentInput): string {
       return `picked a spot ${String(Math.round(input.x * 100))}% across and ${String(Math.round(input.y * 100))}% down the picture, on ${input.thingID === null ? "open background" : `${input.thingID} (${input.label})`}`;
     case "type":
       return `typed ${input.text} into ${input.elementID} (${input.label})`;
+    case "field":
+      return `typed ${input.text} into a field with no input of its own, ${String(Math.round(input.x * 100))}% across and ${String(Math.round(input.y * 100))}% down the picture, on ${input.thingID === null ? "open background" : `${input.thingID} (${input.label})`}`;
     case "instruct":
       return `told you: ${input.text}`;
   }

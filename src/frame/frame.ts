@@ -170,6 +170,23 @@ export function difference(first: Uint8ClampedArray, second: Uint8ClampedArray):
   return first.length === 0 ? 0 : total / first.length;
 }
 
+/**
+ * The seam between two thumbnails: their mean absolute difference once the mean brightness offset
+ * between them is taken out, 0 to 255. A latent continuation starts on its source's picture with
+ * its exposure shifted by about 15 levels, which a plain difference reads as a cut; a real cut or
+ * a black first frame still reads high.
+ */
+export function seamDifference(first: Uint8ClampedArray, second: Uint8ClampedArray): number {
+  if (first.length === 0) return 0;
+  let offset = 0;
+  for (let i = 0; i < first.length; i++) offset += (second[i] ?? 0) - (first[i] ?? 0);
+  offset /= first.length;
+  let total = 0;
+  for (let i = 0; i < first.length; i++)
+    total += Math.abs((second[i] ?? 0) - (first[i] ?? 0) - offset);
+  return total / first.length;
+}
+
 /** The current video frame at full size as a JPEG blob, for a pinned first frame or an asset. */
 export async function captureStill(video: HTMLVideoElement): Promise<Blob | null> {
   if (video.videoWidth === 0 || video.videoHeight === 0) return null;
@@ -253,8 +270,8 @@ export function smoothThumbnail(source: HTMLVideoElement | ImageBitmap): Uint8Cl
 }
 
 /**
- * How far a clip's first frame is from a still, as the mean thumbnail difference (0 to 255): the
- * seam a viewer sees when the clip starts on that still. Decodes only the first frame, off stage.
+ * How far a clip's first frame is from a still, as their seam difference (0 to 255): the seam a
+ * viewer sees when the clip starts on that still. Decodes only the first frame, off stage.
  */
 export async function seamFromStill(clip: string, still: Blob): Promise<number> {
   const bitmap = await createImageBitmap(still);
@@ -281,7 +298,7 @@ export async function seamFromStill(clip: string, still: Blob): Promise<number> 
     });
     video.src = clip;
     await loaded;
-    return difference(smoothThumbnail(video), stillPixels);
+    return seamDifference(stillPixels, smoothThumbnail(video));
   } finally {
     bitmap.close();
     video.removeAttribute("src");

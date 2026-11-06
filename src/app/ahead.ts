@@ -5,6 +5,7 @@ import { getJevConnection, type Keys } from "../keys/index.ts";
 import type { Memory } from "../memory/index.ts";
 import {
   byLikelihood,
+  chosenOf,
   isFollow,
   momentKey,
   MomentTree,
@@ -25,6 +26,7 @@ import { describeChange, projectEntity, viewOf } from "../projector/index.ts";
 import { DeadlineError, now, record, withDeadline } from "../run-log/index.ts";
 import type { Draft, View, World } from "../state/index.ts";
 import { inputMemory, readGuesses, type GuessBlock, type GuessTaker } from "../turn/index.ts";
+import { BuildWatch, type BuildMiss } from "./build-watch.ts";
 import { clipLength, sendClip, type ClipRecord, type Clips } from "./clips.ts";
 import { guessQuestion, logJev } from "./jev-log.ts";
 import type { LocalPlayers } from "./local-players.ts";
@@ -73,6 +75,8 @@ export interface AheadHost {
   linesRequest: (turn: LinesTurn, world: World, signal: AbortSignal) => LinesRequest | null;
   agentLines: (request: LinesRequest, onLine: (line: string) => void) => Promise<void>;
   playingNow: () => boolean;
+  /** The clip the stage waits on or plays, whose build the controller watches itself. */
+  committedClipID: () => string | null;
   /** A hit's moment was sent: its clip is the answer now. */
   commitClip: (moment: Moment, clipID: string, inputID: string) => void;
   /** A hit's moment could not be sent. */
@@ -106,6 +110,12 @@ export class Ahead {
   rankedCount = 0;
   /** Moments on stage whose remaining things were asked for once they took the stage. */
   private readonly toppedUp = new WeakSet<Moment>();
+  /** The deadline on every background build. */
+  private readonly builds = new BuildWatch((miss) => {
+    this.missedBuild(miss);
+  });
+  /** Moments whose build already missed its deadline once and were filmed again. */
+  private readonly overdue = new WeakSet<Moment>();
 
   constructor(private readonly host: AheadHost) {}
 
@@ -244,6 +254,7 @@ export class Ahead {
         rewritten++;
       }
     }
+    this.builds.clear();
     record("tree_detached", { reason, kept, rewritten });
     this.publish();
   }
@@ -264,7 +275,8 @@ export class Ahead {
   }
 
   /** Pops a clip that was never played from its slot's queues; a running build still finishes. */
-  popClip(clipID: string, moment: Moment | null, reason: string): void {
+  popClip(clipID: string, moment: Moment | null, reason: string, graceMs = popGraceMs): void {
+    this.builds.settle(clipID);
     const clip = this.host.clips.get(clipID);
     if (clip === undefined || clip.played || clip.popped || clip.slot < 0) return;
     clip.popped = true;
@@ -275,7 +287,98 @@ export class Ahead {
       built: clip.built,
       reason,
     });
-    this.host.pool.pop(clip.slot, clipID, popGraceMs);
+    this.host.pool.pop(clip.slot, clipID, graceMs);
+  }
+
+  /** A session finished a build or failed one: its deadline stops and the session is alive. */
+  buildSettled(slotIndex: number, clipID: string): void {
+    this.builds.settle(clipID);
+    this.builds.progressed(slotIndex);
+  }
+
+  /** A session reached ready, so its deadlines count from now. */
+  sessionStarted(slotIndex: number): void {
+    this.builds.progressed(slotIndex);
+  }
+
+  /**
+   * A background build missed its deadline: it is popped and its place on the session released
+   * at once, its moment goes back to written to be filmed again, once (a second miss rejects it),
+   * and a session that finished nothing in that time is recycled unless the stage is on it. Checked
+   * again later while new work is closed, and left alone once the stage waits on it.
+   */
+  private missedBuild(miss: BuildMiss): void {
+    const host = this.host;
+    const clip = host.clips.get(miss.clipID);
+    if (!host.running() || clip === undefined || clip.built || clip.popped) return;
+    if (clip.slot !== miss.slot || host.committedClipID() === miss.clipID) return;
+    if (!host.open()) {
+      this.builds.watch(miss.clipID, miss.slot, 0);
+      return;
+    }
+    const moment = clip.moment;
+    const slot = host.pool.slot(miss.slot);
+    const held = moment !== null && this.tree.holds(moment) && moment.clipID === miss.clipID;
+    const rescheduled = held && !this.overdue.has(moment);
+    const recycle =
+      miss.wedged &&
+      slot !== undefined &&
+      slot.playingClipID === null &&
+      miss.slot !== host.activeSlot() &&
+      miss.slot !== this.tree.root?.slot;
+    record("build_deadline", {
+      clipID: miss.clipID,
+      slot: miss.slot,
+      key: moment?.key ?? null,
+      milliseconds: miss.milliseconds,
+      wedged: miss.wedged,
+      rescheduled,
+      recycled: recycle,
+    });
+    this.popClip(miss.clipID, moment, "build_deadline", 0);
+    if (held) {
+      this.unfilmFollows(moment, "build_deadline");
+      moment.clipID = null;
+      moment.slot = null;
+      moment.start = null;
+      if (rescheduled) {
+        this.overdue.add(moment);
+        moment.status = "written";
+      } else {
+        moment.status = "rejected";
+        moment.refilms++;
+      }
+    }
+    if (recycle) this.recycleSession(miss.slot);
+    this.publish();
+    this.pump();
+  }
+
+  /**
+   * Replaces a wedged session: every captured moment it built keeps its local media as a clip
+   * with no session, and every moment filming or built on it goes back to written, to be filmed
+   * again elsewhere or on its fresh session.
+   */
+  private recycleSession(slotIndex: number): void {
+    const root = this.tree.root;
+    for (const moment of this.tree.all()) {
+      const clipID = moment.clipID;
+      if (moment === root || moment.slot !== slotIndex || clipID === null) continue;
+      this.builds.settle(clipID);
+      if (moment.clipURL !== null && moment.held !== null && moment.status !== "filming") {
+        this.host.clips.local(clipID, moment);
+        moment.slot = null;
+        continue;
+      }
+      const clip = this.host.clips.get(clipID);
+      if (clip !== undefined) clip.popped = true;
+      if (moment.status === "rejected") continue;
+      moment.status = "written";
+      moment.clipID = null;
+      moment.slot = null;
+      moment.start = null;
+    }
+    this.host.pool.recycle(slotIndex, "build_deadline");
   }
 
   /** A moment's guess turn is running under `abort`. */
@@ -492,6 +595,7 @@ export class Ahead {
     }
     const awaited = this.awaited;
     if (awaited?.moment === moment) host.commitClip(moment, sent.clipID, awaited.inputID);
+    else this.builds.watch(sent.clipID, slotIndex, Math.max(0, slot.inFlight.size - 1));
     this.publish();
     this.pump();
   }
@@ -906,11 +1010,25 @@ export class Ahead {
       Math.round(performance.now() - started),
     );
     const shownIDs = new Set(moment.state.elements.map((element) => element.id));
-    const boxes = cleanBoxes(result.boxes.filter((found) => shownIDs.has(found.elementID)));
+    const typingIDs = new Set(
+      moment.state.elements
+        .filter((element) => element.kind === "input")
+        .map((element) => element.id),
+    );
+    const boxes = cleanBoxes(
+      result.boxes.filter((found) => shownIDs.has(found.elementID)),
+      (found) => typingIDs.has(found.elementID),
+    );
     const first = moment.checks === null;
     moment.boxes = boxes;
     if (first) {
-      const checks = momentChecks(moment, boxes, result, this.seams.get(moment) ?? null);
+      const { subjectPresence, boxable, ...checks } = momentChecks(
+        { ...moment, chosen: chosenOf(moment) },
+        [...shownIDs],
+        boxes,
+        result,
+        this.seams.get(moment) ?? null,
+      );
       moment.checks = checks;
       if (moment.status === "captured" || moment.status === "built")
         moment.status = checks.passed ? "ready" : "rejected";
@@ -918,6 +1036,8 @@ export class Ahead {
         key: moment.key,
         clipID: moment.clipID,
         ...checks,
+        subjectPresence,
+        boxable,
       });
       if (!checks.passed) this.refilm(moment);
       else this.host.keeper.keep(moment);

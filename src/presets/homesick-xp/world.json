@@ -9,7 +9,7 @@
     "settle": "In the last second, the camera comes to rest on a clear steady view of where it now is, every thing in its own place",
     "ambient": "A computer fan hums softly under the desk while faint suburban birdsong drifts in from outside",
     "selectSound": "A soft plastic tap and a bright startup chime",
-    "lettering": "crisp small Tahoma style sans in Title Case, white on blue and black on gray",
+    "lettering": "crisp Tahoma style sans in Title Case, white on blue and black on gray",
     "style": "glossy 2003 computer graphics, saturated colors",
     "places": {
       "around": {
@@ -103,11 +103,13 @@
     ],
     "filler": [
       "Everything is glossy 2003 computer graphics with smooth bright gradients",
+      "Every character is a glossy round cartoon in the same 2003 computer graphics style as the world",
       "Rounded chrome, royal blue title bars and grass green fill the picture",
       "Edges are crisp and colors are rich and saturated",
-      "All lettering is the crisp small Tahoma style sans of 2003, in Title Case",
-      "Lettering is small and high contrast, with clear space around every word",
-      "Each thing that can be chosen sits apart with open space around it",
+      "Backgrounds are calm open sky, felt, glow or smooth gradient",
+      "All lettering is the crisp Tahoma style sans of 2003, in Title Case",
+      "Words are few, large and high contrast, with clear space around every word",
+      "One big star leads every picture, and each other thing sits apart with wide open space around it",
       "Everything is huge around the camera, like a tiny visitor inside a computer",
       "The picture is sharp from edge to edge with a steady exposure",
       "The whole world is in constant motion until the clip comes to rest",

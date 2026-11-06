@@ -1,6 +1,6 @@
 # Jev questions
 
-Each line is `key: text`. Jev reads the frame as `frame` and the person's recent inputs as `recent`. Code fills `{look}` with a thing's look sentence and `{label}` with its printed label. The `degradation-` lines are the score's levels, crisp to badly degraded. The `point` question reads the whole frame as `frame` and a crop of it around the spot the person chose as `crop`; code fills `{look}` and `{state}` with each thing in view.
+Each line is `key: text`. Jev reads the frame as `frame` and the person's recent inputs as `recent`. Code fills `{look}` with a thing's look sentence and `{label}` with its printed label. The `degradation-` lines are the score's levels, crisp to badly degraded. The `point` question reads the whole frame as `frame` and a crop of it around the spot the person chose as `crop`; code fills `{look}` and `{state}` with each thing in view. `point-field` asks, of the same spot, whether it is a place made for typed words.
 
 box: In `frame`: {look}
 present: Is this in `frame`: {look}
@@ -15,3 +15,4 @@ point: `crop` is cut from `frame` around the spot the person chose. Which of the
 point-thing: {look}
 point-thing-now: {look}, {state}
 point-open: Open background or empty space, with no particular thing at the center
+point-field: Is the very center of `crop` on a field, box or bar made for typing words into, such as a text field, a search bar, a password box or a compose box?

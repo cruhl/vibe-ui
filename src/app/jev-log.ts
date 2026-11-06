@@ -54,6 +54,7 @@ export function logPointJev(
     ...point,
     thingID: result.thingID,
     probability: Math.round(result.probability * 100) / 100,
+    field: Math.round(result.field * 100) / 100,
     latencyMs,
     inputTokens: result.inputTokens,
     model: result.model,

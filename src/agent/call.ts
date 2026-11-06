@@ -9,13 +9,15 @@ export const agentModel = "gpt-6-luna";
 /**
  * What the person did: the session opened, a click, a click on no box (a point in frame fractions,
  * on the thing Jev saw there or on open background when `thingID` is null), text typed into an
- * input, or a direct instruction.
+ * input, text typed into a field Jev saw at a point that has no input of its own, or a direct
+ * instruction.
  */
 export type AgentInput =
   | { kind: "start" }
   | { kind: "click"; elementID: string; label: string }
   | { kind: "point"; x: number; y: number; thingID: string | null; label: string }
   | { kind: "type"; elementID: string; label: string; text: string }
+  | { kind: "field"; x: number; y: number; thingID: string | null; label: string; text: string }
   | { kind: "instruct"; text: string };
 
 /**

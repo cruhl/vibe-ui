@@ -259,6 +259,25 @@ function actionSentence(
     const approach = trimEnd(fill(before.canon.approach, { thing: named(after, thing) }));
     return change === null ? approach : phrase("pick", { approach, change });
   }
+  if (input.kind === "field") {
+    const added = ops
+      .flatMap((op) =>
+        op.op === "add" && before.registry[op.placement.id] === undefined
+          ? [after.entities[op.placement.id]]
+          : [],
+      )
+      .find((entity) => entity?.control === "input");
+    const seen = input.thingID === null ? undefined : before.entities[input.thingID];
+    const target =
+      added !== undefined
+        ? named(after, added)
+        : seen !== undefined
+          ? named(before, seen)
+          : definite(input.label);
+    return change === null
+      ? phrase("type-alone", { text: input.text, target })
+      : phrase("type", { text: input.text, target, change });
+  }
   const entity = before.entities[input.elementID] ?? after.entities[input.elementID];
   const target = entity === undefined ? definite(input.label) : named(before, entity);
   if (input.kind === "type")

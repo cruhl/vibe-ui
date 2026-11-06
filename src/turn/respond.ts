@@ -45,10 +45,10 @@ export interface RespondOptions {
 /**
  * Answers an input in the line format. Each line applies to a draft of the world as it closes; the
  * first follow-up or guess header, or the end of the stream, settles the change and commits it
- * while follow-ups and guesses keep streaming to the taker the commit returns. Rejected lines are dropped; a turn left with no
- * usable change (or, with `errors`, any rejected line) is asked again once with its problems
- * listed, under its own short deadline, and the second answer is used, or the first when only it
- * was usable. A turn the model declines is asked again once, its problem saying the world is
+ * while follow-ups and guesses keep streaming to the taker the commit returns. Rejected lines are
+ * dropped; a turn left with no usable change, or with an add that would crowd the view (with
+ * `errors`, any rejected line), is asked again once with its problems listed, under its own short
+ * deadline, and the second answer is used, or the first when only it was usable. A turn the model declines is asked again once, its problem saying the world is
  * made up fiction, and fails as refused when declined again.
  */
 export function respond(input: AgentInput, options: RespondOptions): void {
@@ -91,7 +91,10 @@ export function respond(input: AgentInput, options: RespondOptions): void {
           }, options.reaskMs);
     const settle = (continues = false): boolean => {
       const usable = usableDraft(draft);
-      const reask = options.reask === "errors" ? draft.errors.length > 0 || !usable : !usable;
+      const reask =
+        (options.reask === "errors" && draft.errors.length > 0) ||
+        draft.crowded.length > 0 ||
+        !usable;
       if (reask && !reasked) {
         reasked = true;
         earlier = usable ? draft : null;

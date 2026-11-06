@@ -1,4 +1,4 @@
-import { difference, thumbnail } from "../frame/index.ts";
+import { difference, seamDifference, thumbnail } from "../frame/index.ts";
 import { record } from "../run-log/index.ts";
 
 /** A frame darker than this mean luma counts as black. */
@@ -88,7 +88,7 @@ export class FrameWatch {
       this.hooks.firstFrame(
         waiting.clipID,
         thumb.luma,
-        this.held === null ? null : Math.round(difference(thumb.pixels, this.held) * 10) / 10,
+        this.held === null ? null : Math.round(seamDifference(this.held, thumb.pixels) * 10) / 10,
       );
     }
     const changed = this.held === null ? 255 : difference(thumb.pixels, this.held);

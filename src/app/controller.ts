@@ -59,6 +59,7 @@ import { LocalPlayers, type LocalLoad, type Player } from "./local-players.ts";
 import { InputLock } from "./lock.ts";
 import { logOverlay } from "./overlay-log.ts";
 import { capturePoint, seePoint } from "./point.ts";
+import type { TypingTarget } from "../overlay/index.ts";
 import { initialState, viewKey, type AppState, type InputRecord, type UserInput } from "./state.ts";
 
 export type {
@@ -130,6 +131,7 @@ export class Controller {
     },
     onStarted: (slot) => {
       if (slot.ready) this.preUpload(slot);
+      this.ahead.sessionStarted(slot.index);
       this.ahead.pump();
     },
     onStartFailed: (slot, error) => {
@@ -196,6 +198,7 @@ export class Controller {
     linesRequest: (turn, world, signal) => this.linesRequest(turn, world, signal),
     agentLines: (request, onLine) => this.agentLines(request, onLine),
     playingNow: () => this.playingNow(),
+    committedClipID: () => this.committedClipID,
     commitClip: (moment, clipID, inputID) => {
       this.commitClip(moment, clipID, inputID);
     },
@@ -785,6 +788,12 @@ export class Controller {
       record("input_paused", { event });
       return;
     }
+    const field = this.fieldOf(event);
+    if (field !== null) {
+      this.openTyping(field);
+      return;
+    }
+    if (event.kind === "type" && this.state.typing !== null) this.set({ typing: null });
     const locked = this.state.locked;
     if (locked !== null || !this.consistent) {
       const aimed = this.findElement(event);
@@ -798,6 +807,14 @@ export class Controller {
       return;
     }
     const midClipNow = this.playingNow();
+    if (event.kind === "type" && "field" in event) {
+      const text = event.text.trim();
+      if (text === "") return;
+      const { x, y, thingID, label } = event.field;
+      const typed: AgentInput = { kind: "field", x, y, thingID, label, text };
+      this.miss(typed, this.newInput(typed, "miss", midClipNow, event, null));
+      return;
+    }
     if (event.kind === "instruct") {
       const text = event.text.trim();
       if (text === "") return;
@@ -845,6 +862,40 @@ export class Controller {
     else this.miss(input, this.newInput(input, "miss", midClip, event, box));
   }
 
+  /**
+   * The field a click lands on, an input by its id or by a box under its point, or null for any
+   * other input: a click on a field opens typing on it, never an action, locked or not.
+   */
+  private fieldOf(event: UserInput): TypingTarget | null {
+    if (event.kind !== "click") return null;
+    const element =
+      "elementID" in event
+        ? this.state.shownView.elements.find((candidate) => candidate.id === event.elementID)
+        : this.findElement(event);
+    if (element?.kind !== "input") return null;
+    const box = this.state.boxes.find((found) => found.elementID === element.id)?.box;
+    const point =
+      "x" in event
+        ? { x: event.x, y: event.y }
+        : box === undefined
+          ? { x: 0.5, y: 0.5 }
+          : { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };
+    return { elementID: element.id, thingID: element.id, label: element.label, ...point };
+  }
+
+  /** Opens typing on a field, logged as `typing_opened`; Enter in it sends the text as typed. */
+  private openTyping(target: TypingTarget): void {
+    record("typing_opened", { ...target });
+    this.set({ typing: target });
+  }
+
+  /** The person left the open typing without sending anything. */
+  closeTyping(): void {
+    if (this.state.typing === null) return;
+    record("typing_closed", { ...this.state.typing });
+    this.set({ typing: null });
+  }
+
   private retryUnresolved(): void {
     const waiting = this.unresolved;
     this.unresolved = [];
@@ -862,8 +913,9 @@ export class Controller {
    * A click that lands on no box still counts: input locks at once with its deadline from the
    * click, the frame and a crop around the point are taken from the video, and Jev says which
    * thing in the world is there, or open background, within its deadline. The agent then answers
-   * a click on that thing at that spot as a miss, adding it as its own pick. A point Jev cannot
-   * answer unlocks and is dropped.
+   * a click on that thing at that spot as a miss, adding it as its own pick. A point on an input,
+   * or on a spot Jev sees as a field made for typed words, unlocks and opens typing there instead.
+   * A point Jev cannot answer unlocks and is dropped.
    */
   private pointClick(point: { x: number; y: number }, midClip: boolean): void {
     const video = this.video;
@@ -876,28 +928,34 @@ export class Controller {
     const inputID = crypto.randomUUID().slice(0, 8);
     const t = now();
     const frame = captureStill(video);
-    const world = this.state.shownView.world;
+    const view = this.state.shownView;
     this.lock.lock(inputID, lockDeadlineMs.input);
     if (this.state.paused) this.lock.suspend();
     this.set({ locked: inputID });
     record("point_asked", { inputID, ...point, midClip });
-    void seePoint(getJevConnection(keys), pictures, point, world, inputID).then((input) => {
+    void seePoint(getJevConnection(keys), pictures, point, view, inputID).then((outcome) => {
       if (this.state.phase !== "running" || this.state.locked !== inputID) return;
-      if (input === null) {
+      if (outcome === null) {
         this.unlock("point_unseen");
         this.stageBoxes.reopen("point_unseen");
         return;
       }
+      if (outcome.kind === "typing") {
+        this.unlock("point_typing");
+        this.stageBoxes.reopen("point_typing");
+        this.openTyping(outcome.target);
+        return;
+      }
       const event: UserInput = { kind: "click", ...point };
       this.miss(
-        input,
-        this.newInput(input, "miss", midClip, event, null, null, { inputID, t, frame }),
+        outcome.input,
+        this.newInput(outcome.input, "miss", midClip, event, null, null, { inputID, t, frame }),
       );
     });
   }
 
   private findElement(event: UserInput): ViewElement | null {
-    if (event.kind === "instruct") return null;
+    if (event.kind === "instruct" || "field" in event) return null;
     const elements = this.state.shownView.elements;
     const current = this.state.boxesKey === viewKey(this.state.shownView);
     if ("elementID" in event) {
@@ -912,6 +970,8 @@ export class Controller {
     const hit = boxAt(
       this.state.boxes.filter((found) => found.presence >= readyPresence),
       event,
+      (found) =>
+        elements.some((element) => element.id === found.elementID && element.kind === "input"),
     );
     return hit === null ? null : (elements.find((element) => element.id === hit.elementID) ?? null);
   }
@@ -948,7 +1008,10 @@ export class Controller {
     const memoryInput = inputMemory(input);
     this.memory.append({
       t,
-      kind: input.kind === "instruct" || input.kind === "type" ? "direction" : "input",
+      kind:
+        input.kind === "instruct" || input.kind === "type" || input.kind === "field"
+          ? "direction"
+          : "input",
       text: memoryInput,
     });
     this.set({
@@ -977,7 +1040,19 @@ export class Controller {
                   ? { kind: "click", x: input.x, y: input.y }
                   : input.kind === "type"
                     ? { kind: "type", elementID: input.elementID, text: input.text }
-                    : input,
+                    : input.kind === "field"
+                      ? {
+                          kind: "type",
+                          field: {
+                            elementID: null,
+                            thingID: input.thingID,
+                            label: input.label,
+                            x: input.x,
+                            y: input.y,
+                          },
+                          text: input.text,
+                        }
+                      : input,
           box,
           prompt: null,
         },
@@ -1209,13 +1284,15 @@ export class Controller {
         const answerInput: MomentInput =
           input.kind === "type"
             ? { elementID: input.elementID, action: "type", text: input.text }
-            : input.kind === "click"
-              ? { elementID: input.elementID, action: "click", text: null }
-              : input.kind === "point"
-                ? { elementID: input.thingID ?? "", action: "click", text: null }
-                : input.kind === "instruct"
-                  ? { elementID: "", action: "type", text: input.text }
-                  : { elementID: "", action: "click", text: null };
+            : input.kind === "field"
+              ? { elementID: input.thingID ?? "", action: "type", text: input.text }
+              : input.kind === "click"
+                ? { elementID: input.elementID, action: "click", text: null }
+                : input.kind === "point"
+                  ? { elementID: input.thingID ?? "", action: "click", text: null }
+                  : input.kind === "instruct"
+                    ? { elementID: "", action: "type", text: input.text }
+                    : { elementID: "", action: "click", text: null };
         const answer = this.ahead.moment({
           key: momentKey(parent.key, answerInput, draft.lines),
           parentKey: parent.key,
@@ -1495,6 +1572,7 @@ export class Controller {
         });
         slot.builtOrder.push(clipID);
         slot.inFlight.delete(clipID);
+        this.ahead.buildSettled(slot.index, clipID);
         const clip = this.clips.get(clipID);
         if (clip === undefined) return;
         clip.built = true;
@@ -1610,6 +1688,7 @@ export class Controller {
           reason: message.reason ?? null,
         });
         slot.inFlight.delete(message.clip.clip_id);
+        this.ahead.buildSettled(slot.index, message.clip.clip_id);
         const clip = this.clips.get(message.clip.clip_id);
         if (clip?.moment != null && clip.moment.clipID === message.clip.clip_id) {
           clip.moment.status = "rejected";

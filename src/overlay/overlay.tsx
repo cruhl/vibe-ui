@@ -1,8 +1,21 @@
-import { useRef, useState, type MouseEvent, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import { boxAt, type Point } from "../boxes/index.ts";
 import type { Box, ElementBox } from "../jev/index.ts";
 import { eventSeconds, record } from "../run-log/index.ts";
 import type { ViewElement } from "../state/index.ts";
+
+/**
+ * Where typing is open, as the controller opened it for a click that met no box: an input by its
+ * id, or a field Jev saw at a spot that has no input of its own (`elementID` null), with the thing
+ * Jev saw there, its label, and the spot in fractions of the frame.
+ */
+export interface TypingTarget {
+  elementID: string | null;
+  thingID: string | null;
+  label: string;
+  x: number;
+  y: number;
+}
 
 interface Props {
   elements: readonly ViewElement[];
@@ -14,6 +27,12 @@ interface Props {
   presenceThreshold?: number;
   onClick: (element: ViewElement) => void;
   onType: (element: ViewElement, text: string) => void;
+  /** Where typing is open now for a field with no box on screen, or null. */
+  typing?: TypingTarget | null;
+  /** Text typed into a field that has no input of its own, submitted with Enter. */
+  onTypeField?: (target: TypingTarget, text: string) => void;
+  /** The open typing was left: Escape, or focus left it with nothing typed. */
+  onTypingClose?: () => void;
   /**
    * A click as a point, fractions of the frame; when given, the controller resolves the element,
    * and a click on no box comes here too, for the controller to read what is there.
@@ -33,13 +52,34 @@ interface Ripple {
   y: number;
 }
 
-function InputBox({ element, onType }: { element: ViewElement; onType: Props["onType"] }) {
+const typingHint = "Type, then press Enter";
+
+function InputBox({
+  element,
+  focused,
+  register,
+  onType,
+}: {
+  element: ViewElement;
+  focused: boolean;
+  register: (input: HTMLInputElement | null) => void;
+  onType: Props["onType"];
+}) {
   const [text, setText] = useState("");
+  const field = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (focused) field.current?.focus();
+  }, [focused]);
   return (
     <input
+      ref={(input) => {
+        field.current = input;
+        register(input);
+      }}
       className="overlay-input"
       aria-label={element.label}
-      placeholder="Type, then press Enter"
+      data-element-id={element.id}
+      placeholder={typingHint}
       enterKeyHint="send"
       autoComplete="off"
       spellCheck={false}
@@ -56,13 +96,54 @@ function InputBox({ element, onType }: { element: ViewElement; onType: Props["on
   );
 }
 
+/** Typing opened on a field with no box on screen: a bar at the spot, focused, Enter submits. */
+function TypingBar({
+  target,
+  onSubmit,
+  onClose,
+}: {
+  target: TypingTarget;
+  onSubmit: (text: string) => void;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState("");
+  const share = (value: number) => `${String(Math.min(Math.max(value, 0.08), 0.92) * 100)}%`;
+  return (
+    <input
+      className="typing-bar"
+      style={{ left: share(target.x), top: share(target.y) }}
+      aria-label={target.label}
+      placeholder={typingHint}
+      enterKeyHint="send"
+      autoComplete="off"
+      spellCheck={false}
+      autoFocus
+      value={text}
+      onChange={(event) => {
+        setText(event.target.value);
+      }}
+      onBlur={() => {
+        if (text.trim() === "") onClose();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") onClose();
+        if (event.key !== "Enter" || text.trim() === "") return;
+        onSubmit(text);
+        setText("");
+      }}
+    />
+  );
+}
+
 const hasArea = (found: ElementBox) =>
   found.box.right > found.box.left && found.box.bottom > found.box.top;
 
 /**
- * The click layer over the video. Every press is resolved by its point against the live boxes,
- * smallest box first, in one handler, and logged with its point and outcome; a press on no box
- * goes to the controller as a point, which reads what is there. A pressed element
+ * The click layer over the video. Every press is resolved by its point against the live boxes in
+ * one handler, a field's box before any other and then the smallest, and logged with its point and
+ * outcome. A press anywhere on a field's box focuses its typing and is never an action; a press on
+ * no box goes to the controller as a point, which reads what is there and may open typing on a
+ * field with no box on screen, shown as a typing bar at the spot. A pressed element
  * reacts on the video at once; while the last input is still being answered a press nudges the
  * busy state and still goes to the controller, which keeps the last one and replays it when the
  * lock lifts, and hover and pointer cues are off, so the lock shows. Each element still has its
@@ -77,6 +158,9 @@ export function Overlay({
   presenceThreshold = 0.5,
   onClick,
   onType,
+  typing = null,
+  onTypeField,
+  onTypingClose,
   onPoint,
   onPress,
   onRefused,
@@ -87,6 +171,7 @@ export function Overlay({
   const [pressed, setPressed] = useState<Point | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const nextRipple = useRef(0);
+  const fields = useRef(new Map<string, HTMLInputElement>());
   const [wasLocked, setWasLocked] = useState(locked);
   if (wasLocked !== locked) {
     setWasLocked(locked);
@@ -97,6 +182,9 @@ export function Overlay({
       byID.has(found.elementID) && hasArea(found) && (debug || found.presence >= presenceThreshold),
   );
   const clickable = enabled && !locked;
+  const takesTyping = (found: ElementBox) => byID.get(found.elementID)?.kind === "input";
+  const boxedTyping =
+    typing?.elementID != null && live.some((found) => found.elementID === typing.elementID);
   const hover = (id: string | null) => {
     if (id === hovered) return;
     if (hovered !== null) record("box_hover", { elementID: hovered, phase: "leave" });
@@ -124,7 +212,7 @@ export function Overlay({
       data-locked={locked}
       onPointerMove={(event) => {
         const point = pointOf(event, event.currentTarget);
-        const found = point === null || !clickable ? null : boxAt(live, point);
+        const found = point === null || !clickable ? null : boxAt(live, point, takesTyping);
         hover(found?.elementID ?? null);
       }}
       onPointerLeave={() => {
@@ -134,7 +222,14 @@ export function Overlay({
         if (event.target instanceof HTMLInputElement) return;
         const point = pointOf(event, event.currentTarget);
         if (point === null) return;
-        const found = boxAt(live, point);
+        const found = boxAt(live, point, takesTyping);
+        const field = found === null ? undefined : fields.current.get(found.elementID);
+        if (enabled && found !== null && field !== undefined) {
+          event.preventDefault();
+          field.focus();
+          record("pointer", { ...point, elementID: found.elementID, outcome: "typing" });
+          return;
+        }
         if (locked || !enabled) {
           record("pointer", {
             ...point,
@@ -178,7 +273,7 @@ export function Overlay({
               }
             : pointOf(event, surface);
         if (point === null) return;
-        const found = boxAt(live, point);
+        const found = boxAt(live, point, takesTyping);
         const element = found === null ? undefined : byID.get(found.elementID);
         if (found === null && onPoint !== undefined) {
           if (!locked) record("pointer", { ...point, elementID: null, outcome: "point" });
@@ -208,6 +303,21 @@ export function Overlay({
           }}
         />
       ))}
+      {typing !== null && !boxedTyping ? (
+        <TypingBar
+          key={`${typing.elementID ?? typing.thingID ?? "field"}-${String(typing.x)}-${String(typing.y)}`}
+          target={typing}
+          onSubmit={(text) => {
+            if (locked) onRefused();
+            const element = typing.elementID === null ? undefined : byID.get(typing.elementID);
+            if (element !== undefined) onType(element, text);
+            else onTypeField?.(typing, text);
+          }}
+          onClose={() => {
+            onTypingClose?.();
+          }}
+        />
+      ) : null}
       {live.map((found) => {
         const element = byID.get(found.elementID);
         if (element === undefined) return null;
@@ -234,6 +344,11 @@ export function Overlay({
             {element.kind === "input" ? (
               <InputBox
                 element={element}
+                focused={typing?.elementID === element.id}
+                register={(input) => {
+                  if (input === null) fields.current.delete(element.id);
+                  else fields.current.set(element.id, input);
+                }}
                 onType={(target, text) => {
                   if (locked) onRefused();
                   onType(target, text);

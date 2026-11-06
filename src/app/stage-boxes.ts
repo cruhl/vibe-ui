@@ -1,7 +1,7 @@
 import { cleanBoxes, heldVerdict, lingers, readyPresence } from "../boxes/index.ts";
 import { getJevConnection, type Keys } from "../keys/index.ts";
 import type { Memory } from "../memory/index.ts";
-import type { Moment } from "../moments/index.ts";
+import { chosenOf, type Moment } from "../moments/index.ts";
 import type { Frame } from "../frame/index.ts";
 import { boxElements, jevDeadline, type BoxExtras, type ElementBox } from "../jev/index.ts";
 import { now, record, withDeadline } from "../run-log/index.ts";
@@ -166,7 +166,12 @@ export class StageBoxes {
     const introduced = clip?.introduced ?? [];
     const removed = (clip?.removed ?? []).map((element) => element.id);
     const verdict = heldVerdict(
-      { introduced, removed: clip?.removed ?? [] },
+      {
+        chosen: clip?.moment == null ? null : chosenOf(clip.moment),
+        introduced,
+        removed: clip?.removed ?? [],
+      },
+      host.state().shownView.elements.map((element) => element.id),
       host.state().boxes,
       found,
       this.degradation,
@@ -194,6 +199,8 @@ export class StageBoxes {
       record("frame_mismatch", {
         clipID,
         presence: verdict.presence,
+        subjectPresence: verdict.subjectPresence,
+        boxable: verdict.boxable,
         introduced,
         introducedPresence: verdict.introducedPresence,
         removed,
@@ -237,6 +244,9 @@ export class StageBoxes {
       source === "held" && clipID !== null ? (host.clips.get(clipID)?.removed ?? []) : [];
     const elements = [...shown.elements, ...removed];
     const shownIDs = new Set(shown.elements.map((element) => element.id));
+    const typingIDs = new Set(
+      shown.elements.filter((element) => element.kind === "input").map((element) => element.id),
+    );
     const ahead = host.ahead;
     const root = ahead.tree.root;
     const ranked = ahead.openGuesses();
@@ -272,7 +282,10 @@ export class StageBoxes {
         return true;
       }
       host.set({
-        boxes: cleanBoxes(result.boxes.filter((found) => shownIDs.has(found.elementID))),
+        boxes: cleanBoxes(
+          result.boxes.filter((found) => shownIDs.has(found.elementID)),
+          (found) => typingIDs.has(found.elementID),
+        ),
         boxesSource: source,
         boxesKey: key,
       });

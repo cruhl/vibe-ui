@@ -1,7 +1,7 @@
 {
   "canon": {
     "name": "Big Squeeze",
-    "frame": "a wide view of a kid's lemonade stand on a sunny suburban sidewalk, watched by a fixed camera across the street at child height, the whole stand framed in the middle with the sidewalk on both sides, a green lawn and white picket fence behind and a bright blue sky above",
+    "frame": "a wide view of a tiny homemade lemonade stand on a sunny suburban sidewalk, watched by a fixed camera across the street at waist height, the whole stand framed in the middle with the sidewalk on both sides, a green lawn and white picket fence behind and a bright blue sky above",
     "still": "The camera holds perfectly steady on the whole stand for the whole clip while the striped awning flaps gently in the breeze, puffy clouds drift and a little bird hops along the fence",
     "approach": "In the first half second, {thing} wobbles and swells up with a big cartoon boing",
     "arrive": "{thing} pops into view {place} with a bouncy cartoon boing",
@@ -9,7 +9,7 @@
     "settle": "In the last second, everything bounces to a stop and the camera holds perfectly steady on the whole stand, every thing in its new place and pose while the awning flaps gently",
     "ambient": "Birds chirp, ice cubes clink in a pitcher and a bouncy ukulele and kazoo tune plays somewhere down the street",
     "selectSound": "A cheerful cartoon boing and a slide whistle",
-    "lettering": "a kid's neat hand painted brush lettering in navy blue, sentence case",
+    "lettering": "neat hand painted brush lettering in navy blue, sentence case",
     "style": "bright stop motion claymation, sunny saturated colors",
     "places": {
       "street": {
@@ -92,7 +92,7 @@
         "sound": "A brass band plays a bouncy march"
       },
       {
-        "mood": "the whole street throws a giant lemonade parade in the kid's honor",
+        "mood": "the whole street throws a giant lemonade parade in the owner's honor",
         "ambient": "Yellow confetti rains down over the whole street",
         "sound": "A marching band of kazoos plays and a huge crowd cheers"
       }
@@ -141,12 +141,12 @@
       "id": "kid",
       "parent": "stand",
       "place": "stand.back",
-      "look": "a cheerful clay kid in a red cap with huge swim goggles pushed up on the forehead",
+      "look": "a cheerful grown man of clay with a big mustache, a red cap and huge swim goggles pushed up on the forehead",
       "state": "smiling and waving",
       "words": null,
       "control": "pick",
       "sound": null,
-      "voice": "a bright, squeaky, very confident kid's voice"
+      "voice": "a bright, booming, very confident grown up voice"
     },
     {
       "id": "pitcher",

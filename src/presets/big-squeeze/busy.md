@@ -38,7 +38,7 @@ the indicator art and sounds in `busy/` are painted and recorded from the prompt
   },
   "phases": {
     "opening": "Opening the stand",
-    "thinking": "The kid has an idea",
+    "thinking": "The owner has an idea",
     "writing": "Painting a bigger sign",
     "filming": "Cranking the lemon machine",
     "arriving": "Here it comes",

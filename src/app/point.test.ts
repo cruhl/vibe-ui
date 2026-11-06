@@ -2,11 +2,11 @@ import { describe, expect, test, vi } from "vitest";
 import { z } from "zod";
 import { boxAround } from "../boxes/index.ts";
 import { pointAt, type JevConnection } from "../jev/index.ts";
-import { projectEntity } from "../projector/index.ts";
+import { projectEntity, viewOf } from "../projector/index.ts";
 import { folderScenarios } from "../scenario/index.ts";
 import { applyOp, parseLine, type Op, type World } from "../state/index.ts";
 import { inputLabel, inputMemory } from "../turn/index.ts";
-import { pointCandidates, pointInput, seePoint } from "./point.ts";
+import { pointCandidates, pointInput, pointOutcome, seePoint } from "./point.ts";
 
 vi.mock("../capture/index.ts", () => ({ captureFile: vi.fn() }));
 
@@ -40,11 +40,12 @@ const Sent = z.object({
       instructions: z.string(),
       criteria: z.record(z.string(), z.string()),
     }),
+    field: z.object({ type: z.string(), instructions: z.string() }).optional(),
   }),
 });
 
 /** A Jev connection whose answer chooses `choice`, keeping every request it was sent. */
-function fakeJev(choice: string | null) {
+function fakeJev(choice: string | null, field = 0.1) {
   const sent: z.infer<typeof Sent>[] = [];
   const connection: JevConnection = {
     baseURL: "https://jev.test",
@@ -58,6 +59,7 @@ function fakeJev(choice: string | null) {
           model: "jev-test",
           answers: {
             point: { type: "choice", choice, confidence: 0.8, probabilities: { [choice]: 0.8 } },
+            field: { type: "noul", noul: field },
           },
           usage: { input_tokens: 10, output_tokens: 1 },
         }),
@@ -123,21 +125,25 @@ describe("point clicks", () => {
     const candidates = pointCandidates(crowd);
     const index = candidates.findIndex((candidate) => candidate.id === "grunters");
     const { connection } = fakeJev(`thing_${String(index)}`);
-    const input = await seePoint(
+    const outcome = await seePoint(
       connection,
       { frame: "FRAME", crop: "CROP" },
       { x: 0.704, y: 0.421 },
-      crowd,
+      viewOf(crowd),
       "abc",
     );
-    expect(input).toEqual({
+    expect(outcome).toEqual({
       kind: "point",
-      x: 0.7,
-      y: 0.42,
-      thingID: "grunters",
-      label: "a group of broad faced cave people carved in pale stone",
+      input: {
+        kind: "point",
+        x: 0.7,
+        y: 0.42,
+        thingID: "grunters",
+        label: "a group of broad faced cave people carved in pale stone",
+      },
     });
-    if (input === null) throw new Error("no input");
+    if (outcome?.kind !== "point") throw new Error("no input");
+    const input = outcome.input;
     expect(inputMemory(input)).toBe(
       "click a spot on a group of broad faced cave people carved in pale stone",
     );
@@ -152,10 +158,62 @@ describe("point clicks", () => {
     expect(pointInput({ x: 0.1, y: 0.2 }, null, crowd).thingID).toBeNull();
   });
 
+  test("a point on an input opens typing on it and is never an action", () => {
+    const typing = run(crowd, [
+      "+carve-box world column.3 input | a wide plain flat slab for carving words | CARVE",
+    ]).world;
+    const outcome = pointOutcome(
+      { x: 0.4, y: 0.6 },
+      { thingID: "carve-box", field: 0 },
+      viewOf(typing),
+    );
+    expect(outcome).toEqual({
+      kind: "typing",
+      target: { elementID: "carve-box", thingID: "carve-box", label: "CARVE", x: 0.4, y: 0.6 },
+    });
+  });
+
+  test("a spot Jev sees as a field opens typing there even with no input declared", async () => {
+    const { connection, sent } = fakeJev("open", 0.9);
+    const outcome = await seePoint(
+      connection,
+      { frame: "FRAME", crop: "CROP" },
+      { x: 0.5, y: 0.8 },
+      viewOf(crowd),
+      "abc",
+    );
+    expect(outcome).toEqual({
+      kind: "typing",
+      target: { elementID: null, thingID: null, label: "open background", x: 0.5, y: 0.8 },
+    });
+    expect(sent[0]?.questions.field?.instructions).toMatch(/typing/i);
+    const grunters = pointOutcome(
+      { x: 0.7, y: 0.4 },
+      { thingID: "grunters", field: 0.8 },
+      viewOf(crowd),
+    );
+    expect(grunters).toMatchObject({
+      kind: "typing",
+      target: { elementID: null, thingID: "grunters" },
+    });
+    const picked = pointOutcome(
+      { x: 0.7, y: 0.4 },
+      { thingID: "grunters", field: 0.2 },
+      viewOf(crowd),
+    );
+    expect(picked.kind).toBe("point");
+  });
+
   test("Jev failing drops the point", async () => {
     const { connection } = fakeJev(null);
     expect(
-      await seePoint(connection, { frame: "F", crop: "C" }, { x: 0.5, y: 0.5 }, crowd, "abc"),
+      await seePoint(
+        connection,
+        { frame: "F", crop: "C" },
+        { x: 0.5, y: 0.5 },
+        viewOf(crowd),
+        "abc",
+      ),
     ).toBeNull();
   });
 

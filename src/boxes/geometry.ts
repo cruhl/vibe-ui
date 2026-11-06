@@ -27,15 +27,23 @@ export function overlap(first: Box, second: Box): number {
   return shared / (area(first) + area(second) - shared);
 }
 
-/** The smallest box under a point, the one rule that resolves a click among overlapping boxes. */
+/**
+ * The box a click at a point lands on, the one rule that resolves a click among overlapping
+ * boxes: a box that takes typing wins over every other box under the point, so a click anywhere
+ * on a field opens typing on it; among the rest, the smallest box wins.
+ */
 export function boxAt<Found extends { box: Box }>(
   boxes: readonly Found[],
   point: Point,
+  takesTyping: (found: Found) => boolean = () => false,
 ): Found | null {
+  const rank = (found: Found) => (takesTyping(found) ? 0 : 1);
   return (
     boxes
       .filter((found) => contains(found.box, point))
-      .sort((first, second) => area(first.box) - area(second.box))[0] ?? null
+      .sort(
+        (first, second) => rank(first) - rank(second) || area(first.box) - area(second.box),
+      )[0] ?? null
   );
 }
 
@@ -51,23 +59,31 @@ export function boxAround(point: Point, width: number, height: number): Box {
 
 /**
  * Boxes that can be hit: drops boxes with no real width or height, and where two elements' boxes
- * mostly cover each other keeps only the one Jev is surest of. Logs `boxes_dropped`.
+ * mostly cover each other keeps only one: a box that takes typing over one that does not,
+ * otherwise the one Jev is surest of. Logs `boxes_dropped`.
  */
-export function cleanBoxes(boxes: readonly ElementBox[]): ElementBox[] {
+export function cleanBoxes(
+  boxes: readonly ElementBox[],
+  takesTyping: (found: ElementBox) => boolean = () => false,
+): ElementBox[] {
   const sized = boxes.filter(
     (found) =>
       found.box.right - found.box.left >= minimumBoxSide &&
       found.box.bottom - found.box.top >= minimumBoxSide,
   );
   const sureness = (found: ElementBox) => found.presence * (found.confidence ?? 1);
+  const beats = (other: ElementBox, found: ElementBox) =>
+    takesTyping(other) !== takesTyping(found)
+      ? takesTyping(other)
+      : sureness(other) > sureness(found) ||
+        (sureness(other) === sureness(found) && sized.indexOf(other) < sized.indexOf(found));
   const kept = sized.filter(
     (found) =>
       !sized.some(
         (other) =>
           other !== found &&
           overlap(found.box, other.box) > contestedOverlap &&
-          (sureness(other) > sureness(found) ||
-            (sureness(other) === sureness(found) && sized.indexOf(other) < sized.indexOf(found))),
+          beats(other, found),
       ),
   );
   if (kept.length < boxes.length)

@@ -86,6 +86,27 @@ export const lineLimits = { look: 20, beat: 20, say: 20, printed: 3 } as const;
 const idPattern = /^[a-z][a-z0-9.]*(?:-[a-z0-9.]+)*$/;
 
 /**
+ * The most `pick` and `input` things a world keeps in view at once; places, fixtures and props
+ * never count. Loose enough that every preset's starting world has room for a full window of
+ * picks; the prompt aims lower and states this same number as the hard ceiling.
+ */
+export const viewLimits = { picks: 12 } as const;
+
+const pickCount = (world: World) =>
+  Object.values(world.entities).filter((entity) => entity.control !== null).length;
+
+/**
+ * Why a change crowds the view, or null: it leaves more picks in view than before, and more than
+ * `viewLimits` allows. A world already over the ceiling may still shrink toward it.
+ */
+export function crowding(before: World, after: World): string | null {
+  const picks = pickCount(after);
+  return picks > viewLimits.picks && picks > pickCount(before)
+    ? `the view would hold ${picks} picks, over ${viewLimits.picks}; first remove with -id what has played its part`
+    : null;
+}
+
+/**
  * Why printed words are malformed: opening in lowercase, the mark of a state phrase written into
  * the words slot, or too long to be a label. Their case is otherwise the world's lettering.
  */

@@ -23,7 +23,7 @@ state-part: , {state}
 words-part: , bearing the {noun} {words}
 word: word
 words: words
-composition: The picture is composed with care: one clear focal point, things neatly aligned and set apart with generous space around each one.
+composition: The picture is composed with care: one clear focal point, things neatly aligned and set apart with generous space around each one. Every person shown is an adult.
 lettering: Every printed word is set in {lettering}, small, crisp and easy to read, with a clear margin around it on whatever carries it.
 ambient-rung: {ambient}
 say: {voice}, the voice of {the}, says {words}

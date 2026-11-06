@@ -1,4 +1,4 @@
-export { Overlay } from "./overlay.tsx";
+export { Overlay, type TypingTarget } from "./overlay.tsx";
 export { Controls } from "./controls.tsx";
 export { CreateProgress } from "./create.tsx";
 export { Icon, type IconName } from "./icon.tsx";

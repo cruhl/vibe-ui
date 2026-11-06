@@ -8,6 +8,7 @@ export {
   frameDataURL,
   frameOfStill,
   heldStill,
+  seamDifference,
   seamFromStill,
   thumbnail,
   type Frame,

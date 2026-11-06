@@ -260,7 +260,7 @@ html:has(.keys-screen) body {
   border-radius: 4px;
   box-sizing: border-box;
 }
-.overlay-enabled .hitbox[data-hover="true"] {
+.overlay-enabled .hitbox[data-hover="true"]:not(.hitbox-kind-input) {
   backdrop-filter: brightness(1.22) saturate(1.12);
   mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%);
   transition: backdrop-filter 140ms ease-out;
@@ -368,6 +368,28 @@ html:has(.keys-screen) body {
 }
 .overlay-input:focus-visible {
   border-color: color-mix(in srgb, var(--focus) 75%, transparent);
+}
+.typing-bar {
+  position: absolute;
+  z-index: 8;
+  width: min(520px, 84%);
+  height: 52px;
+  translate: -50% -50%;
+  box-sizing: border-box;
+  padding: 0 0.8em;
+  border: 2px solid color-mix(in srgb, var(--focus) 75%, transparent);
+  border-radius: 10px;
+  outline: none;
+  background: rgba(14, 14, 17, 0.92);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
+  color: #f6f5f1;
+  caret-color: var(--focus);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 500;
+}
+.typing-bar::placeholder {
+  color: rgba(246, 245, 241, 0.62);
 }
 .ripple {
   position: absolute;

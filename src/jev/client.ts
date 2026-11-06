@@ -198,10 +198,14 @@ export interface PointCandidate {
   state: string | null;
 }
 
-/** Which thing Jev sees at a point, or null for open background, and how sure it is. */
+/**
+ * Which thing Jev sees at a point, or null for open background, how sure it is, and how likely
+ * the spot is a field made for typed words.
+ */
 export interface PointResult {
   thingID: string | null;
   probability: number;
+  field: number;
   inputTokens: number;
   model: string;
   questions: Record<string, Question>;
@@ -211,7 +215,7 @@ export interface PointResult {
 /**
  * Asks Jev which thing in view is at the center of `cropBase64`, a crop of `frameBase64` around
  * the point the person chose: one choice among the candidates' look sentences and open background,
- * with the questions of `questions.md`. Both images go in one request, so the crop is read in
+ * and whether that spot is a field made for typed words, with the questions of `questions.md`. Both images go in one request, so the crop is read in
  * the context of the whole frame.
  */
 export async function pointAt(
@@ -234,6 +238,7 @@ export async function pointAt(
   criteria.open = question("point-open");
   const questions: Record<string, Question> = {
     point: { type: "choice", instructions: question("point"), criteria },
+    field: { type: "noul", instructions: question("point-field") },
   };
   const parsed = await ask(
     connection,
@@ -245,9 +250,11 @@ export async function pointAt(
   const answer = parsed.answers.point;
   const index = answer?.type === "choice" ? /^thing_(\d+)$/.exec(answer.choice)?.[1] : undefined;
   const chosen = index === undefined ? undefined : candidates[Number(index)];
+  const field = parsed.answers.field;
   return {
     thingID: chosen?.id ?? null,
     probability: answer?.type === "choice" ? (answer.probabilities[answer.choice] ?? 0) : 0,
+    field: field?.type === "noul" ? field.noul : 0,
     inputTokens: parsed.usage.input_tokens,
     model: parsed.model,
     questions,

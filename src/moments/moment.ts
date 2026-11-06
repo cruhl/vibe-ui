@@ -18,6 +18,10 @@ export const nextInput: MomentInput = { elementID: "", action: "next", text: nul
 /** Whether a moment is a follow-up of its parent rather than the answer to an input. */
 export const isFollow = (moment: Moment) => moment.input?.action === "next";
 
+/** The thing chosen to reach a moment, or null for an opening or a follow-up. */
+export const chosenOf = (moment: Moment) =>
+  moment.input === null || moment.input.action === "next" ? null : moment.input.elementID;
+
 /**
  * Where a moment is: its lines exist (`written`), its clip is queued or building (`filming`), the
  * clip is built (`built`), its media and held frame are local (`captured`), it is boxed and its

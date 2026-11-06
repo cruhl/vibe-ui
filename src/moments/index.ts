@@ -2,6 +2,7 @@ export {
   answers,
   byLikelihood,
   contentHash,
+  chosenOf,
   isFollow,
   momentKey,
   nextInput,

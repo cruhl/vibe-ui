@@ -113,6 +113,13 @@ function Stage({ controller }: { controller: Controller }) {
           onType={(element, text) => {
             controller.input({ kind: "type", elementID: element.id, text });
           }}
+          typing={state.typing}
+          onTypeField={(field, text) => {
+            controller.input({ kind: "type", field, text });
+          }}
+          onTypingClose={() => {
+            controller.closeTyping();
+          }}
           onPress={(press) => {
             if (stage !== null) acknowledge(stage, { ...press, inputID: null, source: "pointer" });
           }}

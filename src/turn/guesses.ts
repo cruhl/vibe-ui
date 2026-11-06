@@ -62,7 +62,13 @@ export function readGuesses(options: {
     if (current === null || broken || !options.alive()) return;
     if (!keepable(current)) {
       broken = true;
-      record("follow_rejected", { roundID, guess: null, errors: current.errors });
+      record("follow_rejected", {
+        roundID,
+        guess: null,
+        errors: current.errors,
+        crowded: current.crowded,
+        lines: current.lines,
+      });
       return;
     }
     base = current.world;
@@ -77,6 +83,7 @@ export function readGuesses(options: {
         roundID,
         elementID: current.guess.elementID,
         errors: current.draft.errors,
+        crowded: current.draft.crowded,
       });
       return;
     }
@@ -92,6 +99,8 @@ export function readGuesses(options: {
         roundID,
         guess: current.guess.elementID,
         errors: current.follows[kept]?.errors ?? [],
+        crowded: current.follows[kept]?.crowded ?? [],
+        lines: current.follows[kept]?.lines ?? [],
       });
     options.onGuess(kept < 0 ? current : { ...current, follows: current.follows.slice(0, kept) });
   };
