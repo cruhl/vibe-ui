@@ -5,7 +5,7 @@ the indicator art and sounds in `busy/` are painted and recorded from the prompt
 
 ```json
 {
-  "pitch": "A 1990s movie hacker OS where everything glows, beeps and works dramatically.",
+  "pitch": "A 1990s movie hacker OS. Everything glows, beeps and works.",
   "acknowledge": "brighten",
   "font": "'Courier New', Menlo, ui-monospace, monospace",
   "colors": {

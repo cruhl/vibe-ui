@@ -293,7 +293,7 @@ export class Keeper implements MomentKeeper {
   private grown(tree: MomentTree, depths: KeeperHost["depths"], busy: boolean): boolean {
     if (tree.root === null || busy) return false;
     for (const moment of tree.all()) {
-      const depth = tree.depth(moment) ?? 0;
+      const depth = tree.steps(moment) ?? 0;
       if (depth <= depths.film) {
         const settled =
           moment.status === "ready" ||

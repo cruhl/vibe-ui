@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { record } from "../run-log/index.ts";
 import { WorldFile } from "../state/index.ts";
 import { busyFiles, parseBusyMarkdown, type BusyFileName } from "./busy.ts";
@@ -17,6 +18,10 @@ const worlds = import.meta.glob<unknown>("../presets/*/world.json", {
   import: "default",
   eager: true,
 });
+const pickers = import.meta.glob<unknown>("../presets/*/picker.json", {
+  import: "default",
+  eager: true,
+});
 const art = import.meta.glob<string>("../presets/*/busy/*", {
   query: "?url",
   import: "default",
@@ -33,7 +38,10 @@ const media = import.meta.glob<string>("../presets/*/moments/*.{mp4,jpg}", {
   eager: true,
 });
 
-const cardWidths = [320, 640, 960];
+/** A folder's place on the picker: worlds sort by `order`, lowest first, the first one featured. */
+const PickerFile = z.object({ order: z.number().int() });
+
+const cardWidths = [320, 640, 960, 1344];
 
 function cardOf(base: string): Scenario["card"] {
   const images = cardWidths.flatMap((width) => {
@@ -63,7 +71,11 @@ function load(id: string): Scenario | null {
     } catch (error: unknown) {
       record("busy_kit_invalid", { id, message: String(error) });
     }
-  const scenario = scenarioFromFiles(id, { premise, world: world.data, busy }, "folder");
+  const picker = PickerFile.safeParse(pickers[`${base}/picker.json`]);
+  const scenario = {
+    ...scenarioFromFiles(id, { premise, world: world.data, busy }, "folder"),
+    order: picker.success ? picker.data.order : null,
+  };
   const tree = trees[`${base}/moments/tree.json`];
   return tree === undefined
     ? scenario

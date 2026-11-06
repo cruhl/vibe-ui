@@ -33,6 +33,9 @@ never a typed-text field:
   pick:any    choose the first boxed thing not chosen before
   pick:rapid  choose like pick:miss, then while the input is locked click the same thing again
               and then another boxed thing, which the app keeps and replays when the lock lifts
+  point:<x>,<y> click that point of the picture, in fractions of its width and height, boxed
+              or not; a click on no box is read by Jev and answered by the agent
+  point:open  click the point of the picture farthest from every box
   tell:<text> give the world a direct message
   pause:<s>   once the frame is held, pause the session for that many seconds, then resume
   end         press End and its confirm as a person does and wait for the picker the page
@@ -355,6 +358,10 @@ interface StepResult {
   seam: number | null;
   /** Jev requests about the screen itself between the click and the held frame. */
   screenJevRequests: number | null;
+  /** For a point step on no box: what Jev saw there, how sure, and how long it took. */
+  pointSeen: { thingID: string | null; probability: number; latencyMs: number } | null;
+  /** For a point step: the things that take a click after the answer that were not there before. */
+  added: string[] | null;
   failed: string | null;
 }
 
@@ -519,6 +526,8 @@ async function runStep(
     secondsToBoxes: null,
     seam: null,
     screenJevRequests: null,
+    pointSeen: null,
+    added: null,
     failed: null,
   };
   const prefix = String(index + 1);
@@ -593,6 +602,33 @@ async function runStep(
         log(`${prefix}: extra click on ${extra.id} while ${locked === null ? "open" : "locked"}`);
       }
     }
+  } else if (step.startsWith("point:")) {
+    await waitFor(page, "a held frame with boxes", held, 90_000);
+    await sleep(500);
+    before = await waitFor(page, "a held frame with boxes", held, 30_000);
+    const spec = step.slice("point:".length);
+    const shown = before.boxes.filter((box) => box.presence >= 0.5);
+    const point = spec === "open" ? farthestPoint(shown.map((box) => box.box)) : parsePoint(spec);
+    if (before.video === null) throw new Error("no video on screen");
+    const inside = shown.find(
+      (box) =>
+        point.x >= box.box.left &&
+        point.x <= box.box.right &&
+        point.y >= box.box.top &&
+        point.y <= box.box.bottom,
+    );
+    result.target = `point ${point.x.toFixed(2)},${point.y.toFixed(2)}${inside === undefined ? "" : ` in ${inside.elementID}`}`;
+    log(`${prefix}: ${result.target}`);
+    const ring = 0.02;
+    await frame(page, `${prefix}a-point.png`, {
+      left: point.x - ring,
+      right: point.x + ring,
+      top: point.y - ring * 1.8,
+      bottom: point.y + ring * 1.8,
+    });
+    const video = before.video;
+    lastClickAt = Date.now();
+    await page.mouse.click(video.x + point.x * video.width, video.y + point.y * video.height);
   } else throw new Error(`unknown step ${step}`);
   const [answered] = await Promise.all([
     waitFor(
@@ -657,7 +693,50 @@ async function runStep(
     `${prefix}: from ${result.source ?? "?"}, seam ${result.seam ?? "?"}, boxes ${result.secondsToBoxes ?? "?"} s after the click, ${result.screenJevRequests ?? "?"} Jev requests about the screen`,
   );
   await frame(page, `${prefix}c-held.png`, null, true);
+  if (step.startsWith("point:") && input !== undefined) {
+    const all = events(settled?.runID ?? null);
+    const seen = all.find(
+      (event) => event.kind === "point_seen" && event.inputID === input.inputID,
+    );
+    if (seen !== undefined)
+      result.pointSeen = {
+        thingID: typeof seen.thingID === "string" ? seen.thingID : null,
+        probability: typeof seen.probability === "number" ? seen.probability : 0,
+        latencyMs: typeof seen.latencyMs === "number" ? seen.latencyMs : 0,
+      };
+    const known = new Set(before.elements.map((element) => element.id));
+    result.added = (settled?.elements ?? [])
+      .filter((element) => !known.has(element.id))
+      .map((element) => `${element.id}: ${element.look}`);
+    const beat = all.find((event) => event.kind === "beat" && event.inputID === input.inputID);
+    log(
+      `${prefix}: Jev saw ${result.pointSeen === null ? "nothing asked (a box was hit)" : `${result.pointSeen.thingID ?? "open background"} (${String(result.pointSeen.probability)}) in ${String(result.pointSeen.latencyMs)} ms`}; answered ${input.label}; beat ${typeof beat?.text === "string" ? beat.text : "?"}; new picks ${result.added.join("; ") || "none"}`,
+    );
+  }
   return result;
+}
+
+function parsePoint(spec: string): { x: number; y: number } {
+  const [x, y] = spec.split(",").map(Number);
+  if (x === undefined || y === undefined || !(x >= 0 && x <= 1 && y >= 0 && y <= 1))
+    throw new Error(`point:${spec} needs two fractions of the picture, such as point:0.6,0.5`);
+  return { x, y };
+}
+
+/** The point of a grid over the picture farthest from every box, away from its very edges. */
+function farthestPoint(boxes: z.infer<typeof Box>[]): { x: number; y: number } {
+  const distance = (point: { x: number; y: number }, box: z.infer<typeof Box>) =>
+    Math.hypot(
+      Math.max(box.left - point.x, 0, point.x - box.right),
+      Math.max(box.top - point.y, 0, point.y - box.bottom),
+    );
+  const steps = Array.from({ length: 9 }, (_, i) => 0.1 + i * 0.1);
+  const grid = steps.flatMap((x) => steps.map((y) => ({ x, y })));
+  const clearance = (point: { x: number; y: number }) =>
+    Math.min(...boxes.map((box) => distance(point, box)), Number.POSITIVE_INFINITY);
+  return (
+    grid.sort((first, second) => clearance(second) - clearance(first))[0] ?? { x: 0.5, y: 0.5 }
+  );
 }
 
 let activeRunID: string | null = null;

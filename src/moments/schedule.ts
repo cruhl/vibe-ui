@@ -4,7 +4,10 @@ import type { ChildrenStatus, MomentStatus } from "./moment.ts";
 export interface NodeView {
   key: string;
   parentKey: string | null;
+  /** Steps below the moment on stage that each wait on an input. */
   depth: number;
+  /** A follow-up, which plays on its own once its parent's clip ends. */
+  follow: boolean;
   probability: number;
   index: number;
   status: MomentStatus;
@@ -66,10 +69,11 @@ function priority(first: NodeView, second: NodeView): number {
 /**
  * The work to start now, from the tree and the pool; pure, so the same views always give the same
  * plan. A moment's own guesses are asked for once it is close enough to the moment on stage. A written
- * moment close enough is filmed: the likeliest child of a moment whose clip is still retained on
- * its builder continues it there, queued right behind it; every other child is pinned on its
- * parent's held frame on the least loaded unreserved session. No session takes more than its
- * budget, and a moment refilmed once is never filmed again ahead of need.
+ * moment close enough is filmed: a child of a moment whose clip is still retained on its builder
+ * continues it there, queued behind it, while that session has budget; the rest are pinned on
+ * their parent's held frame on the least loaded unreserved session. No session takes more than its
+ * budget, and a moment refilmed once is never filmed again ahead of need. A follow-up of the
+ * moment on stage (depth 0) is filmed like a moment one step ahead, and is the likeliest of all.
  */
 export function schedule(
   nodes: readonly NodeView[],
@@ -92,28 +96,15 @@ export function schedule(
       (load.get(index) ?? 0) < limits.perSession
     );
   };
-  const latentTaken = new Set<string>();
-  const bestChild = new Map<string, string>();
-  for (const node of ordered)
-    if (node.parentKey !== null && !bestChild.has(node.parentKey))
-      bestChild.set(node.parentKey, node.key);
-  for (const node of ordered)
-    if (node.parentKey !== null && node.status !== "written" && node.status !== "rejected")
-      latentTaken.add(node.parentKey);
   const film: FilmOrder[] = [];
   for (const node of ordered) {
-    if (node.status !== "written" || node.depth < 1 || node.depth > limits.filmDepth) continue;
+    if (node.status !== "written" || node.depth > limits.filmDepth) continue;
+    if (node.depth < 1 && !node.follow) continue;
     if (node.refilms > 0 || node.parentKey === null) continue;
     const source = sourceOf.get(node.parentKey);
     if (source === undefined) continue;
     const retained = source.retainedOn;
-    if (
-      retained !== null &&
-      bestChild.get(node.parentKey) === node.key &&
-      !latentTaken.has(node.parentKey) &&
-      open(retained)
-    ) {
-      latentTaken.add(node.parentKey);
+    if (retained !== null && open(retained)) {
       load.set(retained, (load.get(retained) ?? 0) + 1);
       film.push({ key: node.key, slot: retained, start: "latent" });
       continue;

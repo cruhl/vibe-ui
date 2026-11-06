@@ -5,7 +5,7 @@ the indicator art and sounds in `busy/` are painted and recorded from the prompt
 
 ```json
 {
-  "pitch": "A giant purple monster is stomping through the city and everything you touch gets wrecked.",
+  "pitch": "A kaiju is tearing through downtown. Ride along and see what it wrecks next.",
   "acknowledge": "wobble",
   "font": "Impact, 'Arial Black', 'Helvetica Neue', sans-serif",
   "colors": {

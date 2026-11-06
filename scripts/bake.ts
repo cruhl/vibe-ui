@@ -47,7 +47,7 @@ deleted.
 
 Writes src/presets/<id>/moments/ (kept out of git): tree.json, and per moment <key>.mp4 and
 <key>.jpg, and the picker's card art from the opening (the tree's root): its held frame as
-card-320.jpg, card-640.jpg and card-960.jpg, and its clip as card.mp4, silent, 640 wide. Every clip is re-encoded once with H.264 at --crf (default 28, 0 to never) with its
+card-320.jpg, card-640.jpg, card-960.jpg and card-1344.jpg, and its clip as card.mp4, silent, 960 wide. Every clip is re-encoded once with H.264 at --crf (default 28, 0 to never) with its
 audio copied, kept only when smaller and marked so a rerun never encodes it twice; ffmpeg comes
 from the FFMPEG environment variable or else PATH. After every bake, and alone with --reach, Jev
 spreads a plausible visitor's next choice over every boxed thing on each filmed held frame, and
@@ -189,7 +189,7 @@ function shrink(path: string): number | null {
 }
 
 /** The widths of the opening's held frame written for the picker's cards. */
-const cardWidths = [320, 640, 960];
+const cardWidths = [320, 640, 960, 1344];
 const cardFiles = new Set([...cardWidths.map((width) => `card-${String(width)}.jpg`), "card.mp4"]);
 
 /** Writes the picker's card art from the tree's root: its held frame at each card width and a silent loop. */
@@ -221,7 +221,7 @@ function writeCards(folder: string): void {
         join(folder, opening.clip),
         "-an",
         "-vf",
-        "scale=640:-2:flags=lanczos",
+        "scale=960:-2:flags=lanczos",
         "-c:v",
         "libx264",
         "-preset",

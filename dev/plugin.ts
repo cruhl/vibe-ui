@@ -72,8 +72,7 @@ const BakeQuery = z.union([
  * `.env.local` as prefill for the keys screen, to loopback clients only, so `vite --host` never
  * hands the keys to the LAN. `/__dev/runs` appends run-log batches to `.agent/runs/<runID>.jsonl`
  * and the session bundle, and `/__dev/capture` writes or appends a bundle file under
- * `.agent/sessions/<runID>/` (the recording also to `.agent/recordings/<runID>.webm`, assets also
- * to `.agent/assets/`). `/__dev/bake` writes one baked file (a moment's clip or held frame, or
+ * `.agent/sessions/<runID>/` (the recording also to `.agent/recordings/<runID>.webm`). `/__dev/bake` writes one baked file (a moment's clip or held frame, or
  * `tree.json`) into an existing scenario folder's `moments/`, or with `place=folder` a written
  * scenario's own files (premise, world, busy state and art) into a new folder, for
  * `scripts/bake.ts`. `/__dev/kit/<runID>/<file>` serves a replay kit built by
@@ -157,11 +156,6 @@ export function devPlugin(root: string): Plugin {
             mkdirSync(dirname(path), { recursive: true });
             if (append === "1") appendFileSync(path, bytes);
             else writeFileSync(path, bytes);
-            if (name.startsWith("assets/")) {
-              const assets = join(root, ".agent", "assets");
-              mkdirSync(assets, { recursive: true });
-              writeFileSync(join(assets, name.slice("assets/".length)), bytes);
-            }
             if (name === "recording.webm") {
               const recordings = join(root, ".agent", "recordings");
               mkdirSync(recordings, { recursive: true });

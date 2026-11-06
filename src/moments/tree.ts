@@ -1,4 +1,4 @@
-import { answers, type Moment, type MomentInput } from "./moment.ts";
+import { answers, isFollow, type Moment, type MomentInput } from "./moment.ts";
 
 /**
  * The moments ahead of the stage: one tree rooted at the moment on screen. Every node's parent is
@@ -74,6 +74,22 @@ export class MomentTree {
       current = current.parentKey === null ? null : this.get(current.parentKey);
     }
     return current === null ? null : depth;
+  }
+
+  /**
+   * Steps from the root to a moment that each wait on an input, null for a moment not in the
+   * tree: a follow-up adds none, since it plays on its own once its parent's clip ends.
+   */
+  steps(moment: Moment): number | null {
+    if (this.depth(moment) === null) return null;
+    let steps = 0;
+    for (
+      let current: Moment | null = moment;
+      current !== null && current.key !== this.rootKey;
+      current = current.parentKey === null ? null : this.get(current.parentKey)
+    )
+      if (!isFollow(current)) steps++;
+    return steps;
   }
 
   /**

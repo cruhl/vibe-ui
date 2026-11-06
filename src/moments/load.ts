@@ -25,9 +25,10 @@ export interface TreeCheck {
   rebox: boolean;
 }
 
-function transition(record: BakedMoment): AgentInput {
+function transition(record: BakedMoment): AgentInput | null {
   const input = record.input;
   if (input === null) return { kind: "start" };
+  if (input.action === "next") return null;
   return input.action === "type"
     ? { kind: "type", elementID: input.elementID, label: record.label, text: input.text ?? "" }
     : { kind: "click", elementID: input.elementID, label: record.label };
@@ -37,7 +38,7 @@ function transition(record: BakedMoment): AgentInput {
  * Checks a saved tree by content, never by date. The root's key must match the premise, world
  * and opening as they are now, or the whole tree is stale. Every other moment, parents first, is
  * replayed from its parent's world through its lines with the same code the agent path uses: its
- * key, its state hash and its re-projected prompt (with its stored picture labels) must all match,
+ * key, its state hash and its re-projected prompt must all match,
  * or it is dropped with everything below it.
  */
 export function checkTree(raw: unknown, root: World, current: BakeHashes): TreeCheck {
@@ -54,6 +55,11 @@ export function checkTree(raw: unknown, root: World, current: BakeHashes): TreeC
   if (first.stateHash !== hashWorld(root))
     return { ...empty, stale: [`${first.key}: state hash`], rootStale: true };
   loaded.set(first.key, { record: first, world: root, state: rootState, ops: [] });
+  const followed = new Set(
+    tree.moments.flatMap((record) =>
+      record.input?.action === "next" && record.parentKey !== null ? [record.parentKey] : [],
+    ),
+  );
   for (const record of tree.moments.slice(1)) {
     const parent = record.parentKey === null ? undefined : loaded.get(record.parentKey);
     const input = record.input;
@@ -80,7 +86,7 @@ export function checkTree(raw: unknown, root: World, current: BakeHashes): TreeC
       transition(record),
       parent.world,
       draft.ops,
-      record.pictureLabels,
+      !followed.has(record.key),
     ).prompt;
     if (prompt !== record.prompt) {
       stale.push(`${record.key}: prompt re-projects differently`);

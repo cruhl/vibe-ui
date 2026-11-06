@@ -30,7 +30,7 @@ export const BakedMoment = z.object({
   input: z
     .object({
       elementID: z.string(),
-      action: z.enum(["click", "type"]),
+      action: z.enum(["click", "type", "next"]),
       text: z.string().nullable(),
     })
     .nullable(),
@@ -42,7 +42,6 @@ export const BakedMoment = z.object({
   memory: z.object({ input: z.string(), response: z.string() }),
   stateHash: z.string(),
   prompt: z.string(),
-  pictureLabels: z.array(z.string()),
   start: z.enum(["latent", "pinned", "fresh"]).nullable(),
   status: z.enum(["written", "ready"]),
   boxes: z.array(BakedBox).nullable(),

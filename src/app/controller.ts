@@ -6,8 +6,7 @@ import {
   type LinesRequest,
   type LinesTurn,
 } from "../agent/index.ts";
-import { AssetLibrary } from "../assets/index.ts";
-import { boxAt } from "../boxes/index.ts";
+import { boxAt, readyPresence } from "../boxes/index.ts";
 import {
   bundleBuild,
   captureFile,
@@ -20,7 +19,7 @@ import {
   type Build,
   type RawInputLog,
 } from "../capture/index.ts";
-import { captureStill } from "../frame/index.ts";
+import { captureFrame, captureStill } from "../frame/index.ts";
 import type { ElementBox } from "../jev/index.ts";
 import {
   currentKeys,
@@ -32,11 +31,11 @@ import {
 } from "../keys/index.ts";
 import { phaseNames, type PhaseName } from "../liveness/index.ts";
 import { agentCompactor, Memory } from "../memory/index.ts";
-import { momentKey, rootKey, type Moment, type MomentInput } from "../moments/index.ts";
+import { isFollow, momentKey, rootKey, type Moment, type MomentInput } from "../moments/index.ts";
 import { omniDeadlines, omniModel, type OmniFactory, type OmniMessage } from "../omni/index.ts";
 import { SessionPool, type Slot } from "../pool/index.ts";
 import { currentRoute, type Knobs } from "../route/index.ts";
-import { describeChange, openingPrompt, viewOf } from "../projector/index.ts";
+import { describeChange, openingPrompt, projectEntity, viewOf } from "../projector/index.ts";
 import {
   captureConsole,
   flushNow,
@@ -59,6 +58,7 @@ import { FrameWatch } from "./frames.ts";
 import { LocalPlayers, type LocalLoad, type Player } from "./local-players.ts";
 import { InputLock } from "./lock.ts";
 import { logOverlay } from "./overlay-log.ts";
+import { capturePoint, seePoint } from "./point.ts";
 import { initialState, viewKey, type AppState, type InputRecord, type UserInput } from "./state.ts";
 
 export type {
@@ -114,13 +114,12 @@ export class Controller {
   readonly memory = new Memory(
     agentCompactor(() => (this.keys === null ? null : getOpenAIAccess(this.keys))),
   );
-  readonly assets = new AssetLibrary(`${this.store.getState().scenario.id}/${getRunID()}`);
   private keys: Keys | null = null;
   private readonly timers = new Set<ReturnType<typeof setTimeout>>();
   private readonly clips = new Clips((milliseconds, run) => {
     this.later(milliseconds, run);
   });
-  private readonly pool = new SessionPool(() => getReactorAccess(this.keys), this.assets, {
+  private readonly pool = new SessionPool(() => getReactorAccess(this.keys), {
     running: () => this.state.phase === "running",
     whenOpen: () => this.whenResumed(),
     onStatus: () => {
@@ -180,7 +179,6 @@ export class Controller {
     keeper: this.keeper,
     players: this.players,
     memory: this.memory,
-    assets: this.assets,
     keys: () => this.keys,
     open: () => this.state.phase === "running" && !this.state.paused && this.consistent,
     running: () => this.state.phase === "running",
@@ -215,15 +213,15 @@ export class Controller {
     clips: this.clips,
     ahead: this.ahead,
     memory: this.memory,
-    assets: this.assets,
     state: () => this.state,
     set: (partial) => {
       this.set(partial);
     },
-    video: () => this.video,
+    frame: () => (this.video === null ? null : captureFrame(this.video)),
     keys: () => this.keys,
     committed: () => this.committedClipID,
     settled: () => this.frames.settled,
+    playing: () => this.playingNow(),
     showClipState: (clipID) => {
       this.showClipState(clipID);
     },
@@ -247,6 +245,8 @@ export class Controller {
     },
   });
   private committedClipID: string | null = null;
+  /** The clip on stage that last reached its end or was stopped, so a follow-up may take over. */
+  private endedClipID: string | null = null;
   private readonly lock = new InputLock<UserInput>((inputID, milliseconds) => {
     this.missedLock(inputID, milliseconds);
   });
@@ -398,7 +398,6 @@ export class Controller {
     });
     this.rawInput = rawInput;
     this.stopWatching.push(rawInput.stop);
-    void this.assets.load();
     this.writeIndex(null);
     this.pool.open(size, this.createClient);
     this.publishSlots();
@@ -447,7 +446,6 @@ export class Controller {
       likelihood: null,
       memory: { input: "start", response: "" },
       prompt: opening,
-      pictureLabels: [],
     });
     root.status = "filming";
     this.ahead.plant(root);
@@ -505,7 +503,6 @@ export class Controller {
         likelihood: saved.likelihood,
         memory: saved.memory,
         prompt: saved.prompt,
-        pictureLabels: saved.pictureLabels,
       });
       moment.baked = true;
       moment.start = saved.start;
@@ -579,18 +576,15 @@ export class Controller {
 
   /**
    * Sends a session that just became ready the held frames it is likeliest to pin on (the moment
-   * on screen and its guesses) and every picture kept so far, so its first film never waits on an
-   * upload.
+   * on screen and its guesses), so its first film never waits on an upload.
    */
   private preUpload(slot: Slot): void {
     const root = this.tree.root;
     const frames = (root === null ? [] : [root, ...this.tree.children(root)]).flatMap((moment) =>
       moment.held === null ? [] : [moment.held],
     );
-    const pictures = this.assets.images();
-    if (frames.length + pictures.length > 0)
-      record("pre_upload", { slot: slot.index, frames: frames.length, pictures: pictures.length });
-    for (const image of [...frames, ...pictures]) void this.pool.upload(slot, image);
+    if (frames.length > 0) record("pre_upload", { slot: slot.index, frames: frames.length });
+    for (const image of frames) void this.pool.upload(slot, image);
   }
 
   private watchTracks(): void {
@@ -658,6 +652,8 @@ export class Controller {
     if (moment === null || this.tree.root !== moment) return;
     record("clip_finished", { slot: null, clipID: moment.clipID, local: true });
     this.set({ playing: this.pool.all.some((slot) => slot.playingClipID !== null) });
+    this.endedClipID = moment.clipID;
+    if (this.continueChain()) return;
     void this.stageBoxes.hold(moment);
   }
 
@@ -811,6 +807,14 @@ export class Controller {
     }
     const element = this.findElement(event);
     if (element === null) {
+      if (
+        event.kind === "click" &&
+        "x" in event &&
+        this.state.boxesKey === viewKey(this.state.shownView)
+      ) {
+        this.pointClick(event, midClipNow);
+        return;
+      }
       if (event.kind === "click" && this.unresolved.length < 3) {
         this.unresolved.push({ event, until: performance.now() + unresolvedMs });
         record("input_waiting_for_boxes", { event });
@@ -854,6 +858,44 @@ export class Controller {
     }
   }
 
+  /**
+   * A click that lands on no box still counts: input locks at once with its deadline from the
+   * click, the frame and a crop around the point are taken from the video, and Jev says which
+   * thing in the world is there, or open background, within its deadline. The agent then answers
+   * a click on that thing at that spot as a miss, adding it as its own pick. A point Jev cannot
+   * answer unlocks and is dropped.
+   */
+  private pointClick(point: { x: number; y: number }, midClip: boolean): void {
+    const video = this.video;
+    const keys = this.keys;
+    const pictures = video === null ? null : capturePoint(video, point);
+    if (video === null || keys === null || pictures === null) {
+      record("input_ignored", { event: { kind: "click", ...point }, reason: "no frame to read" });
+      return;
+    }
+    const inputID = crypto.randomUUID().slice(0, 8);
+    const t = now();
+    const frame = captureStill(video);
+    const world = this.state.shownView.world;
+    this.lock.lock(inputID, lockDeadlineMs.input);
+    if (this.state.paused) this.lock.suspend();
+    this.set({ locked: inputID });
+    record("point_asked", { inputID, ...point, midClip });
+    void seePoint(getJevConnection(keys), pictures, point, world, inputID).then((input) => {
+      if (this.state.phase !== "running" || this.state.locked !== inputID) return;
+      if (input === null) {
+        this.unlock("point_unseen");
+        this.stageBoxes.reopen("point_unseen");
+        return;
+      }
+      const event: UserInput = { kind: "click", ...point };
+      this.miss(
+        input,
+        this.newInput(input, "miss", midClip, event, null, null, { inputID, t, frame }),
+      );
+    });
+  }
+
   private findElement(event: UserInput): ViewElement | null {
     if (event.kind === "instruct") return null;
     const elements = this.state.shownView.elements;
@@ -867,7 +909,10 @@ export class Controller {
       return elements.find((element) => element.id === event.elementID) ?? null;
     }
     if (!current) return null;
-    const hit = boxAt(this.state.boxes, event);
+    const hit = boxAt(
+      this.state.boxes.filter((found) => found.presence >= readyPresence),
+      event,
+    );
     return hit === null ? null : (elements.find((element) => element.id === hit.elementID) ?? null);
   }
 
@@ -878,15 +923,18 @@ export class Controller {
     event: UserInput | null = null,
     box: ElementBox | null = null,
     knownFrame: Blob | null = null,
+    clicked: { inputID: string; t: number; frame: Promise<Blob | null> } | null = null,
   ): Pending {
     this.resetIdleTimer();
     this.recorder.resume();
-    const inputID = crypto.randomUUID().slice(0, 8);
+    const inputID = clicked?.inputID ?? crypto.randomUUID().slice(0, 8);
     this.lastInput = input;
-    this.lock.lock(inputID, input.kind === "start" ? lockDeadlineMs.start : lockDeadlineMs.input);
-    if (this.state.paused) this.lock.suspend();
-    this.set({ locked: inputID });
-    const t = now();
+    if (clicked === null) {
+      this.lock.lock(inputID, input.kind === "start" ? lockDeadlineMs.start : lockDeadlineMs.input);
+      if (this.state.paused) this.lock.suspend();
+      this.set({ locked: inputID });
+    }
+    const t = clicked?.t ?? now();
     record("input", {
       inputID,
       input,
@@ -925,9 +973,11 @@ export class Controller {
               ? null
               : input.kind === "click"
                 ? { kind: "click", elementID: input.elementID }
-                : input.kind === "type"
-                  ? { kind: "type", elementID: input.elementID, text: input.text }
-                  : input,
+                : input.kind === "point"
+                  ? { kind: "click", x: input.x, y: input.y }
+                  : input.kind === "type"
+                    ? { kind: "type", elementID: input.elementID, text: input.text }
+                    : input,
           box,
           prompt: null,
         },
@@ -935,11 +985,13 @@ export class Controller {
     });
     const video = this.video;
     const frame =
-      knownFrame !== null
-        ? Promise.resolve(knownFrame)
-        : video === null || input.kind === "start"
-          ? Promise.resolve(null)
-          : captureStill(video);
+      clicked !== null
+        ? clicked.frame
+        : knownFrame !== null
+          ? Promise.resolve(knownFrame)
+          : video === null || input.kind === "start"
+            ? Promise.resolve(null)
+            : captureStill(video);
     const uploadSlot =
       input.kind === "start" || knownFrame !== null || !this.pool.anyReady()
         ? null
@@ -1036,9 +1088,9 @@ export class Controller {
    * in the way; the lock lifts at its first painted frame, its stored boxes apply then, and its
    * clip, built and never to be played live, is popped from its session.
    */
-  private playMoment(moment: Moment, clipID: string, inputID: string): void {
+  private playMoment(moment: Moment, clipID: string, inputID: string | null): void {
     this.committedClipID = clipID;
-    this.updateInput(inputID, { clipID, queuedAt: now(), source: "local" });
+    if (inputID !== null) this.updateInput(inputID, { clipID, queuedAt: now(), source: "local" });
     this.ahead.popClip(clipID, moment, "played_locally");
     const clip = this.clips.get(clipID);
     if (clip !== undefined) clip.played = true;
@@ -1151,7 +1203,7 @@ export class Controller {
       onProgress: (beat) => {
         this.progress(pending.inputID, "writing", beat);
       },
-      onCommit: (draft, stats) => {
+      onCommit: (draft, stats, continues) => {
         const after = viewOf(draft.world);
         if (parent === null || !this.tree.holds(parent) || abort.signal.aborted) return null;
         const answerInput: MomentInput =
@@ -1159,9 +1211,11 @@ export class Controller {
             ? { elementID: input.elementID, action: "type", text: input.text }
             : input.kind === "click"
               ? { elementID: input.elementID, action: "click", text: null }
-              : input.kind === "instruct"
-                ? { elementID: "", action: "type", text: input.text }
-                : { elementID: "", action: "click", text: null };
+              : input.kind === "point"
+                ? { elementID: input.thingID ?? "", action: "click", text: null }
+                : input.kind === "instruct"
+                  ? { elementID: "", action: "type", text: input.text }
+                  : { elementID: "", action: "click", text: null };
         const answer = this.ahead.moment({
           key: momentKey(parent.key, answerInput, draft.lines),
           parentKey: parent.key,
@@ -1176,11 +1230,10 @@ export class Controller {
           likelihood: null,
           memory: { input: pending.memoryInput, response: draft.lines.join("; ") },
           prompt: "",
-          pictureLabels: [],
         });
         this.ahead.handOff(parent, answer, abort);
         answered = answer;
-        const guesses = this.ahead.guessesFor(answer);
+        const guesses = this.ahead.guessesFor(answer, this.knobs.guesses, true);
         this.set({ view: after });
         record("turn_ready", {
           inputID: pending.inputID,
@@ -1205,9 +1258,13 @@ export class Controller {
         record("state_snapshot", { inputID: pending.inputID, state: after });
         this.memory.append({ t: now(), kind: "response", text: draft.lines.join("; ") });
         try {
-          const projected = this.ahead.project(beforeWorld, draft.world, input, draft.ops);
-          answer.prompt = projected.prompt;
-          answer.pictureLabels = projected.pictureLabels;
+          answer.prompt = projectEntity(
+            draft.world,
+            input,
+            beforeWorld,
+            draft.ops,
+            !continues,
+          ).prompt;
           void this.sendAnswer(pending, answer, sourceClipID, pending.midClip ? null : parent.held);
         } catch (error: unknown) {
           this.fail("projection_failed", String(error), pending.inputID);
@@ -1216,11 +1273,11 @@ export class Controller {
         return guesses;
       },
       onWritten: () => {
-        if (answered !== null) this.ahead.finishWriting(answered, abort);
+        if (answered !== null) this.ahead.finishWriting(abort);
       },
-      onFail: (detail) => {
-        this.fail("agent_failed", detail, pending.inputID);
-        if (parent !== null) this.ahead.abandonWriting(parent, abort);
+      onFail: (detail, refused) => {
+        this.fail(refused ? "agent_refused" : "agent_failed", detail, pending.inputID);
+        if (parent !== null) this.ahead.abandonWriting(abort);
         this.becomeConsistent();
       },
     });
@@ -1262,8 +1319,6 @@ export class Controller {
     frame: Blob | null,
     uploadSlot: number | null,
   ): { slot: number; continueFrom: string | null; pinned: Blob | null } {
-    if (this.knobs.respond === "pin" && frame !== null)
-      return { slot: this.pinSlot(uploadSlot), continueFrom: null, pinned: frame };
     const source = sourceClipID === null ? undefined : this.clips.get(sourceClipID);
     const sourceSlot = this.pool.slot(source?.slot ?? this.state.activeSlot);
     const playing = this.playingNow();
@@ -1334,6 +1389,42 @@ export class Controller {
       });
   }
 
+  /**
+   * Hands the stage to the follow-up of the moment on stage once that moment's clip has ended,
+   * while no input is being answered and the session runs: it becomes the moment on stage and plays
+   * from local media when captured, else live the moment it is built. One still building takes
+   * over when its build lands, the held frame on stage meanwhile with input open as after any
+   * clip. Any input cuts the chain, since it drops every follow-up from the tree. Returns whether
+   * one took over.
+   */
+  private continueChain(): boolean {
+    const root = this.tree.root;
+    const state = this.state;
+    if (root?.clipID == null || root.clipID !== this.endedClipID) return false;
+    if (state.phase !== "running" || state.paused || state.locked !== null || !this.consistent)
+      return false;
+    const follow = this.ahead.followOf(root);
+    const clipID = follow?.clipID ?? null;
+    if (follow === null || clipID === null || follow.status === "rejected") return false;
+    const clip = this.clips.get(clipID);
+    const local =
+      follow.clipURL !== null && (follow.status === "captured" || follow.status === "ready");
+    if (!local && (clip?.built !== true || clip.popped)) return false;
+    record("follow_on_stage", { key: follow.key, clipID, from: root.clipID, local });
+    this.ahead.reRoot(follow, "follow_up");
+    this.set({ view: follow.state, heldReady: false });
+    record("state_hash", { inputID: null, hash: hashWorld(follow.world) });
+    this.memory.append({ t: now(), kind: "response", text: follow.memory.response });
+    if (local) this.playMoment(follow, clipID, null);
+    else {
+      this.committedClipID = clipID;
+      this.playNow(clipID);
+    }
+    this.ahead.publish();
+    this.ahead.pump();
+    return true;
+  }
+
   /** Lets inputs in again, logging why, and replays the input kept during the lock. */
   private unlock(reason: string): void {
     const locked = this.state.locked;
@@ -1362,14 +1453,16 @@ export class Controller {
   }
 
   /**
-   * Logs a named failure, shows it in the UI, marks its input, stops the busy state and lifts the
-   * input lock: the one failure path, which clears every flag a failure owns.
+   * Logs a named failure, shows it in the UI, marks its input, stops the busy state, lifts the
+   * input lock and reopens input on the held frame on stage: the one failure path, which clears
+   * every flag a failure owns.
    */
   private fail(name: string, detail: string, inputID: string | null = null): void {
     record(name, { inputID, detail });
     if (inputID === null || inputID === this.state.locked) this.unlock(name);
     if (inputID !== null) this.updateInput(inputID, { failed: `${name}: ${detail}` });
     this.set({ error: `${name}: ${detail}`, busy: false });
+    this.stageBoxes.reopen(name);
   }
 
   private startWatchdog(name: string, milliseconds: number, onMiss: () => void): void {
@@ -1421,6 +1514,8 @@ export class Controller {
         if (built !== null && built.clipID === clipID && this.tree.holds(built))
           this.ahead.capture(built, slot, clipID, slot.builtOrder.length);
         this.ahead.pump();
+        if (built !== null && isFollow(built) && built.parentKey === this.tree.root?.key)
+          this.continueChain();
         return;
       }
       case "clip_started": {
@@ -1487,6 +1582,8 @@ export class Controller {
         }
         if (clipID === this.committedClipID) {
           this.stageBoxes.stopSampling();
+          this.endedClipID = clipID;
+          if (this.continueChain()) return;
           const moment = this.clips.get(clipID)?.moment ?? null;
           if (moment !== null && moment === this.tree.root && moment.clipID === clipID) {
             if (moment.clipURL !== null) this.players.show(moment, false);
@@ -1496,7 +1593,14 @@ export class Controller {
             }
           }
           void this.stageBoxes.held(clipID);
+          return;
         }
+        if (this.stageBoxes.onStage(clipID)) {
+          this.stageBoxes.stopSampling();
+          void this.stageBoxes.held(clipID);
+          return;
+        }
+        this.stageBoxes.reopen("off_track_finished");
         return;
       }
       case "clip_failed": {
@@ -1516,6 +1620,7 @@ export class Controller {
           this.markInput(message.clip.clip_id, { failed: message.reason ?? "clip failed" });
           this.set({ busy: false });
           this.unlock("clip_failed");
+          this.stageBoxes.reopen("clip_failed");
         }
         return;
       }
@@ -1614,7 +1719,7 @@ export class Controller {
     const superseded = () =>
       this.state.inputs.length !== inputsBefore || this.committedClipID !== clipID;
     const root = this.tree.root;
-    if (root?.clipID !== clipID) return;
+    if (root?.clipID !== clipID || this.ahead.followOf(root) !== null) return;
     this.ahead.dropGuesses("refilm");
     const slot = this.pool.idle(this.state.activeSlot);
     record("refilm", {
@@ -1738,7 +1843,11 @@ export class Controller {
     this.deferredPlay = null;
     this.players.resume();
     if (deferred !== null && deferred === this.committedClipID) this.playNow(deferred);
-    else if (this.state.locked === null && this.state.playingClipID === null) {
+    else if (
+      !this.continueChain() &&
+      this.state.locked === null &&
+      this.state.playingClipID === null
+    ) {
       const committed = this.committedClipID;
       if (committed !== null) void this.stageBoxes.held(committed);
       this.guessAgain();

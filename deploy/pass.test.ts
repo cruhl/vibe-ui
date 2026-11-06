@@ -40,6 +40,8 @@ function environment(passes = ledger()): Environment {
     LIMIT_SESSIONS: open,
     LIMIT_WORLDS: open,
     LIMIT_PASS: open,
+    LIMIT_LOG: open,
+    LOGS: unused,
     TURNSTILE_SITE_KEY: "site-key",
     TURNSTILE_SECRET_KEY: "turnstile-secret",
     PASS_SECRET: secret,

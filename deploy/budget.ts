@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { count, json, reply, visitorOf, type Background, type Environment } from "./http.ts";
+import { note } from "./log.ts";
 
 /** The part of a deployment the budget reads: its meter, its ceilings and the owner's secret. */
 export type Metered = Pick<
@@ -219,6 +220,7 @@ export async function admit(
     },
     Admitted,
   );
+  note({ budget: { meter: meterName, amount, admitted } });
   return admitted;
 }
 
@@ -230,30 +232,46 @@ export async function refund(environment: Metered, lease: string): Promise<void>
 /** The answer a metered route gives once today's budget for it is gone. */
 export const busy = () => reply(503, busyCopy, { "Retry-After": "3600" });
 
-const Usage = z.object({ input_tokens: z.number(), output_tokens: z.number() });
-const UsageCarrier = z.object({
-  usage: Usage.nullish(),
-  response: z.object({ usage: Usage.nullish() }).nullish(),
-  delta: z.string().optional(),
-});
-
 const imageTokens = 1_500;
 
 /**
  * A conservative token count for a Responses request whose answer carried no usage: every inline
- * image at a high-detail image's cost, and every other character of the request as a token of its
- * own, plus the characters of output streamed before the cut.
+ * image at a high-detail image's cost, and the rest at one token per three characters, a little
+ * above what text holds, which covers the output a cut answer had streamed.
  */
-export function estimateTokens(requestText: string, outputCharacters: number): number {
+export function estimateTokens(requestText: string): number {
   const images = requestText.match(/data:image\/[^"]*/g) ?? [];
   const textCharacters = images.reduce((left, image) => left - image.length, requestText.length);
-  return images.length * imageTokens + textCharacters + outputCharacters;
+  return images.length * imageTokens + Math.ceil(textCharacters / 3);
+}
+
+const tailBytes = 8192;
+const inputTokensPattern = /"input_tokens":(\d+)/g;
+const outputTokensPattern = /"output_tokens":(\d+)/g;
+
+function lastCount(text: string, pattern: RegExp): number | null {
+  const found = [...text.matchAll(pattern)].at(-1)?.[1];
+  return found === undefined ? null : Number(found);
 }
 
 /**
- * Passes a successful Responses answer through to the page while reading its usage on the way,
- * from the streamed events or the one JSON body, and charges it to today's budget once the
- * answer ends or is cut; with no usage seen it charges the conservative estimate.
+ * The tokens an answer's usage reports, read from the end of its text: a stream's last event and
+ * a JSON body both close with the response's usage. Keys inside the answer's own text arrive
+ * escaped, so only the real usage keys match.
+ */
+export function usageOf(tail: string): number | null {
+  const input = lastCount(tail, inputTokensPattern);
+  const output = lastCount(tail, outputTokensPattern);
+  return input === null || output === null ? null : input + output;
+}
+
+/**
+ * Passes a successful Responses answer through to the page untouched and charges it to today's
+ * budget once it ends: the usage its last 8 KiB report, or with none (a cut answer) the
+ * conservative estimate. The body is teed and piped natively, and the meter's copy is read whole
+ * in the background, so no script runs per chunk: parsing every event, whose opening ones echo
+ * the whole instructions, ran the Worker past its CPU limit and cut answers mid-event. When the
+ * page stops reading, `abortUpstream` ends the call upstream.
  */
 export function meteredAnswer(
   environment: Metered,
@@ -261,74 +279,27 @@ export function meteredAnswer(
   requestText: string,
   upstream: Response,
   background: Background,
+  abortUpstream: () => void,
 ): Response {
   const block = blockOf(visitorOf(request));
-  const decoder = new TextDecoder();
-  let pending = "";
-  let usage: z.infer<typeof Usage> | null = null;
-  let outputCharacters = 0;
-  let charged = false;
-  const read = (line: string) => {
-    const text = line.startsWith("data:") ? line.slice(5).trim() : line.trim();
-    if (!text.startsWith("{")) return;
-    const parsed = UsageCarrier.safeParse(
-      (() => {
-        try {
-          const value: unknown = JSON.parse(text);
-          return value;
-        } catch {
-          return null;
-        }
-      })(),
-    );
-    if (!parsed.success) return;
-    usage = parsed.data.response?.usage ?? parsed.data.usage ?? usage;
-    outputCharacters += parsed.data.delta?.length ?? 0;
-  };
-  const charge = () => {
-    if (charged) return Promise.resolve();
-    charged = true;
-    read(pending);
-    const seen: z.infer<typeof Usage> | null = usage;
-    const tokens =
-      seen === null
-        ? estimateTokens(requestText, outputCharacters)
-        : seen.input_tokens + seen.output_tokens;
-    return meter(environment, { kind: "charge", tokens, block }, z.unknown()).then(
+  const [forPage, copy] = upstream.body === null ? [null, null] : upstream.body.tee();
+  const piped = forPage === null ? null : new TransformStream<Uint8Array, Uint8Array>();
+  if (forPage !== null && piped !== null)
+    background.waitUntil(forPage.pipeTo(piped.writable).catch(abortUpstream));
+  const read = copy === null ? Promise.resolve(null) : new Response(copy).arrayBuffer();
+  const charging = read
+    .catch(() => null)
+    .then((bytes) => {
+      const tail = bytes === null ? "" : new TextDecoder().decode(bytes.slice(-tailBytes));
+      const tokens = usageOf(tail) ?? estimateTokens(requestText);
+      return meter(environment, { kind: "charge", tokens, block }, z.unknown());
+    })
+    .then(
       () => undefined,
       () => undefined,
     );
-  };
-  request.signal.addEventListener("abort", () => {
-    background.waitUntil(charge());
-  });
-  const reader = upstream.body?.getReader() ?? null;
-  if (reader === null) background.waitUntil(charge());
-  const body =
-    reader === null
-      ? null
-      : new ReadableStream<Uint8Array>({
-          async pull(controller) {
-            const next = await reader.read().catch(() => null);
-            if (next === null || next.done) {
-              const charging = charge();
-              background.waitUntil(charging);
-              await charging;
-              if (next === null) controller.error(new Error("the answer was cut"));
-              else controller.close();
-              return;
-            }
-            controller.enqueue(next.value);
-            const lines = (pending + decoder.decode(next.value, { stream: true })).split("\n");
-            pending = lines.pop() ?? "";
-            lines.forEach(read);
-          },
-          async cancel(reason) {
-            background.waitUntil(charge());
-            await reader.cancel(reason);
-          },
-        });
-  return new Response(body, {
+  background.waitUntil(charging);
+  return new Response(piped?.readable ?? null, {
     status: upstream.status,
     headers: {
       "Content-Type": upstream.headers.get("Content-Type") ?? "application/octet-stream",

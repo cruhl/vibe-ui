@@ -3,6 +3,8 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { parseEnv } from "node:util";
+import { keyShapes } from "../src/run-log/redact.ts";
+import { cloudflareCredentials, type CloudflareCredentials } from "./plumbing.ts";
 
 const usage = `pnpm ship [--dry-run] [--secrets] [--hosted on|off]
     [--wrangler <path>] [--env-file <path>]
@@ -61,11 +63,6 @@ function files(directory: string): string[] {
   });
 }
 
-const keyShapes = [
-  /sk-(?:proj-|or-v1-|ant-)?[A-Za-z0-9_-]{20,}/,
-  /\b(?:rk|apikey|fal_sk)_[A-Za-z0-9_-]{20,}/,
-  /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{32}\b/,
-];
 const textExtensions = new Set([".js", ".mjs", ".css", ".html", ".json", ".txt", ".svg", ".md"]);
 
 function checkKeyShapes(dist: string[]): void {
@@ -107,16 +104,12 @@ function checkMoments(dist: string[]): void {
   );
 }
 
-function credentials(): Record<string, string> {
-  if (environmentFile === null) return {};
-  if (!existsSync(environmentFile)) fail(`no env file at ${environmentFile}`);
-  const parsed = parseEnv(readFileSync(environmentFile, "utf8"));
-  return Object.fromEntries(
-    ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"].flatMap((name) => {
-      const value = parsed[name];
-      return value === undefined || value === "" ? [] : [[name, value]];
-    }),
-  );
+function credentials(): CloudflareCredentials {
+  try {
+    return cloudflareCredentials(environmentFile);
+  } catch (error: unknown) {
+    return fail(String(error));
+  }
 }
 
 if (hosted !== "on" && hosted !== "off") fail("--hosted takes on or off");
@@ -152,7 +145,7 @@ const dist = files(join(root, "dist"));
 checkKeyShapes(dist);
 checkMoments(dist);
 const config = join(root, "deploy", "wrangler.jsonc");
-const environment = { ...process.env, ...credentials() };
+const environment = { ...process.env, ...(environmentFile === null ? {} : credentials()) };
 const deployed = spawnSync(
   wrangler,
   ["deploy", "--config", config, "--var", `HOSTED:${hosted}`, ...(dryRun ? ["--dry-run"] : [])],

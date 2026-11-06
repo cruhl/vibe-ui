@@ -47,6 +47,39 @@ const Response = z.object({
   usage: z.object({ input_tokens: z.number(), output_tokens: z.number() }),
 });
 
+/** Sends one request: `state` names each image by its reference in `images`, JPEG base64. */
+async function ask(
+  connection: JevConnection,
+  state: Record<string, string>,
+  images: Record<string, string>,
+  questions: Record<string, Question>,
+  signal: AbortSignal,
+) {
+  const response = await connection.fetch(`${connection.baseURL}/v1/systemone`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${connection.key}`,
+      "Content-Type": "application/json",
+      "TypeSafe-Danger-Zone-Images": "true",
+    },
+    body: JSON.stringify({
+      model: connection.model,
+      state,
+      assets: Object.fromEntries(
+        Object.entries(images).map(([reference, base64]) => [
+          reference,
+          { type: "image", format: "jpg", data_base64: base64 },
+        ]),
+      ),
+      questions,
+    }),
+    signal,
+  });
+  if (!response.ok)
+    throw new Error(`Jev HTTP ${response.status}: ${(await response.text()).slice(0, 300)}`);
+  return Response.parse(await response.json());
+}
+
 /** Deadline in milliseconds for one Jev request, from measured 0.13 to 0.3 s plus headroom. */
 export const jevDeadline = 2000;
 
@@ -121,24 +154,13 @@ export async function boxElements(
     questions[`present_${index}`] = { type: "noul", instructions: question("present", element) };
     questions[`labeled_${index}`] = { type: "noul", instructions: question("labeled", element) };
   });
-  const response = await connection.fetch(`${connection.baseURL}/v1/systemone`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${connection.key}`,
-      "Content-Type": "application/json",
-      "TypeSafe-Danger-Zone-Images": "true",
-    },
-    body: JSON.stringify({
-      model: connection.model,
-      state: { frame: reference, recent: (extras.recent ?? []).join("\n") },
-      assets: { [reference]: { type: "image", format: "jpg", data_base64: frameBase64 } },
-      questions,
-    }),
+  const parsed = await ask(
+    connection,
+    { frame: reference, recent: (extras.recent ?? []).join("\n") },
+    { [reference]: frameBase64 },
+    questions,
     signal,
-  });
-  if (!response.ok)
-    throw new Error(`Jev HTTP ${response.status}: ${(await response.text()).slice(0, 300)}`);
-  const parsed = Response.parse(await response.json());
+  );
   const boxes = elements.flatMap((element, index): ElementBox[] => {
     const box = parsed.answers[`box_${index}`];
     const present = parsed.answers[`present_${index}`];
@@ -162,6 +184,70 @@ export async function boxElements(
         ? guesses.map((_guess, index) => next.probabilities[`guess_${index}`] ?? 0)
         : null,
     degradation: degradation?.type === "score" ? degradation.score : null,
+    inputTokens: parsed.usage.input_tokens,
+    model: parsed.model,
+    questions,
+    answers: parsed.answers,
+  };
+}
+
+/** A thing in view that a point can land on: its id, its look sentence and how it looks now. */
+export interface PointCandidate {
+  id: string;
+  look: string;
+  state: string | null;
+}
+
+/** Which thing Jev sees at a point, or null for open background, and how sure it is. */
+export interface PointResult {
+  thingID: string | null;
+  probability: number;
+  inputTokens: number;
+  model: string;
+  questions: Record<string, Question>;
+  answers: Record<string, unknown>;
+}
+
+/**
+ * Asks Jev which thing in view is at the center of `cropBase64`, a crop of `frameBase64` around
+ * the point the person chose: one choice among the candidates' look sentences and open background,
+ * with the questions of `questions.md`. Both images go in one request, so the crop is read in
+ * the context of the whole frame.
+ */
+export async function pointAt(
+  connection: JevConnection,
+  frameBase64: string,
+  cropBase64: string,
+  candidates: readonly PointCandidate[],
+  signal: AbortSignal,
+): Promise<PointResult> {
+  const frame = crypto.randomUUID();
+  const crop = crypto.randomUUID();
+  const criteria: Record<string, string> = Object.fromEntries(
+    candidates.map((candidate, index) => [
+      `thing_${index}`,
+      candidate.state === null
+        ? question("point-thing", { look: candidate.look })
+        : question("point-thing-now", { look: candidate.look, state: candidate.state }),
+    ]),
+  );
+  criteria.open = question("point-open");
+  const questions: Record<string, Question> = {
+    point: { type: "choice", instructions: question("point"), criteria },
+  };
+  const parsed = await ask(
+    connection,
+    { frame, crop },
+    { [frame]: frameBase64, [crop]: cropBase64 },
+    questions,
+    signal,
+  );
+  const answer = parsed.answers.point;
+  const index = answer?.type === "choice" ? /^thing_(\d+)$/.exec(answer.choice)?.[1] : undefined;
+  const chosen = index === undefined ? undefined : candidates[Number(index)];
+  return {
+    thingID: chosen?.id ?? null,
+    probability: answer?.type === "choice" ? (answer.probabilities[answer.choice] ?? 0) : 0,
     inputTokens: parsed.usage.input_tokens,
     model: parsed.model,
     questions,

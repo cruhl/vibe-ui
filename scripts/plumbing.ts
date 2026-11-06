@@ -2,6 +2,7 @@ import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { appendFileSync, closeSync, existsSync, openSync, readFileSync } from "node:fs";
 import { createConnection } from "node:net";
 import { join } from "node:path";
+import { parseEnv } from "node:util";
 import { chromium, type Browser, type BrowserContext } from "playwright";
 import { z } from "zod";
 import { readLocalEnvironment } from "../dev/environment.ts";
@@ -29,6 +30,31 @@ export const portOpen = (port: number) =>
 /** The repository's `.env.local` as a key/value record, empty when the file is absent. */
 export function readEnvironment(): Record<string, string> {
   return readLocalEnvironment(join(root, ".env.local"));
+}
+
+/** The Cloudflare account a script deploys to or reads from, and the API token it acts with. */
+export interface CloudflareCredentials {
+  CLOUDFLARE_API_TOKEN?: string;
+  CLOUDFLARE_ACCOUNT_ID?: string;
+}
+
+/**
+ * `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from a dotenv file, and nothing else in it;
+ * from the process environment when no file is given. Throws when the file is missing.
+ */
+export function cloudflareCredentials(environmentFile: string | null): CloudflareCredentials {
+  const source =
+    environmentFile === null
+      ? process.env
+      : existsSync(environmentFile)
+        ? parseEnv(readFileSync(environmentFile, "utf8"))
+        : null;
+  if (source === null) throw new Error(`no env file at ${environmentFile ?? ""}`);
+  const pick = (name: keyof CloudflareCredentials) => {
+    const value = source[name];
+    return value === undefined || value === "" ? {} : { [name]: value };
+  };
+  return { ...pick("CLOUDFLARE_API_TOKEN"), ...pick("CLOUDFLARE_ACCOUNT_ID") };
 }
 
 /** A logger that stamps each line with the wall-clock time and writes it to stdout and `file`. */

@@ -17,8 +17,14 @@ const HostedRefusal = z.object({ error: z.string() });
  * through this site's Worker (`baseURL`, every call sent with `fetch`, which carries the pass),
  * which mints one token per session against a lease and ends the session with its own key.
  */
+/**
+ * How a session reaches Reactor: tokens minted with the own key, or leases from this site's
+ * Worker, whose `ready` resolves once the browser holds a hosted-play pass (false when it could
+ * not earn one), so the mint's deadline never counts the challenge.
+ */
 export type ReactorAccess =
-  { kind: "key"; key: string } | { kind: "hosted"; baseURL: string; fetch: typeof fetch };
+  | { kind: "key"; key: string }
+  | { kind: "hosted"; baseURL: string; fetch: typeof fetch; ready: () => Promise<boolean> };
 type HostedAccess = Extract<ReactorAccess, { kind: "hosted" }>;
 
 /** Parameters of one enqueue; see the model contract for each field's rules. */
@@ -101,7 +107,7 @@ export const omniDeadlines = {
   disconnect: 3000,
   terminate: 3000,
   stepListed: 6000,
-  stepDownload: 8000,
+  stepDownload: 30000,
 } as const;
 
 const stepPollMs = 150;
@@ -378,6 +384,7 @@ export class OmniSession implements OmniClient {
   /** Mints a token, connects, and configures playback: flush off, autoplay off. */
   async start(): Promise<void> {
     this.setStatus("minting");
+    if (this.access.kind === "hosted") await this.access.ready();
     const jwt =
       this.access.kind === "key"
         ? await retryOnce("token_mint", () =>

@@ -55,7 +55,9 @@ export type AmbientEffect = z.infer<typeof AmbientEffect>;
 
 /** One scenario's busy state: what the world shows and plays while it works on an answer. */
 export const BusyKit = z.object({
-  pitch: z.string().describe("One short sentence that sells the world on the picker."),
+  pitch: z
+    .string()
+    .describe("One short sentence, a dozen words at most, that sells the world on the picker."),
   acknowledge: z
     .enum(["press", "brighten", "wobble"])
     .describe("How a chosen thing reacts on the video at once."),

@@ -8,7 +8,9 @@ import { SavedScenario, scenarioFromFiles, type Scenario } from "./scenario.ts";
 const written = new Map<string, Scenario>();
 const listeners = new Set<() => void>();
 let version = 0;
-let listed: readonly Scenario[] = folderScenarios;
+const placed = (scenario: Scenario) => scenario.order ?? Number.MAX_SAFE_INTEGER;
+const pickerFolders = [...folderScenarios].sort((first, second) => placed(first) - placed(second));
+let listed: readonly Scenario[] = pickerFolders;
 
 const savedKey = (id: string) => `scenario/${id}`;
 
@@ -16,7 +18,7 @@ const savedKey = (id: string) => `scenario/${id}`;
 export function notifyScenarios(): void {
   version++;
   listed = [
-    ...folderScenarios,
+    ...pickerFolders,
     ...[...written.values()].sort((first, second) =>
       (second.createdAt ?? "").localeCompare(first.createdAt ?? ""),
     ),
@@ -35,7 +37,7 @@ export function scenariosVersion(): number {
   return version;
 }
 
-/** Every scenario: the folders first, then written ones, newest first. */
+/** Every scenario: the folders first in their picker order, then written ones, newest first. */
 export function listScenarios(): readonly Scenario[] {
   return listed;
 }

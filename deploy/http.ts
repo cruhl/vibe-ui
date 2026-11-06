@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { redact } from "../src/run-log/redact.ts";
 
 /** A Workers rate limiting binding. */
 export interface RateLimiter {
@@ -27,6 +28,15 @@ export interface KVNamespace {
   put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
 }
 
+/** An R2 bucket, as far as this Worker uses it. */
+export interface R2Bucket {
+  put(
+    key: string,
+    value: string,
+    options?: { httpMetadata?: { contentType?: string } },
+  ): Promise<unknown>;
+}
+
 /** The part of a request's execution context this Worker uses: work that outlives the answer. */
 export interface Background {
   waitUntil(promise: Promise<unknown>): void;
@@ -45,6 +55,8 @@ export interface Environment {
   LIMIT_FAL: RateLimiter;
   LIMIT_SESSIONS: RateLimiter;
   LIMIT_WORLDS: RateLimiter;
+  LIMIT_LOG: RateLimiter;
+  LOGS: R2Bucket;
   HOSTED?: string;
   VISITOR_SESSIONS?: string;
   GLOBAL_SESSIONS?: string;
@@ -118,7 +130,8 @@ const failureCharacters = 16 * 1024;
 
 /**
  * An upstream failure passed on with its status and its body when that is at most 16 KiB, every
- * secret given replaced, so no provider error ever echoes a key the Worker sent it.
+ * secret given and anything key-shaped replaced, so no provider error ever echoes a key the
+ * Worker sent it.
  */
 export async function scrubbedFailure(
   upstream: Response,
@@ -126,9 +139,7 @@ export async function scrubbedFailure(
 ): Promise<Response> {
   const body = await upstream.text().catch(() => "");
   const text = body.length > failureCharacters ? "" : body;
-  const scrubbed = secrets
-    .filter((secret) => secret.length >= 8)
-    .reduce((current, secret) => current.replaceAll(secret, "[redacted]"), text);
+  const scrubbed = redact(text, secrets);
   return new Response(
     scrubbed === "" ? `Upstream answered HTTP ${String(upstream.status)}` : scrubbed,
     {
@@ -191,9 +202,9 @@ export async function overLimit(limiter: RateLimiter, request: Request): Promise
     : reply(429, "Too many requests. Wait a minute and try again.", { "Retry-After": "60" });
 }
 
-/** Reads a request body up to a byte cap, or null when it is empty or larger. */
+/** Reads a request (or response) body up to a byte cap, or null when it is empty or larger. */
 export async function readBounded(
-  request: Request,
+  request: Pick<Request, "headers" | "body">,
   maxBytes: number,
 ): Promise<Uint8Array<ArrayBuffer> | null> {
   const declared = Number(request.headers.get("Content-Length") ?? "0");

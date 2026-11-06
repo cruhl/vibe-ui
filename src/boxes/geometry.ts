@@ -40,6 +40,16 @@ export function boxAt<Found extends { box: Box }>(
 }
 
 /**
+ * A box of the given width and height centered on a point, all in frame fractions, shifted
+ * inward where it would cross an edge so it keeps its size.
+ */
+export function boxAround(point: Point, width: number, height: number): Box {
+  const left = Math.min(Math.max(point.x - width / 2, 0), Math.max(0, 1 - width));
+  const top = Math.min(Math.max(point.y - height / 2, 0), Math.max(0, 1 - height));
+  return { left, top, right: Math.min(1, left + width), bottom: Math.min(1, top + height) };
+}
+
+/**
  * Boxes that can be hit: drops boxes with no real width or height, and where two elements' boxes
  * mostly cover each other keeps only the one Jev is surest of. Logs `boxes_dropped`.
  */

@@ -5,7 +5,7 @@ the indicator art and sounds in `busy/` are painted and recorded from the prompt
 
 ```json
 {
-  "pitch": "A 16 color TempleOS style terminal built for God. You are God.",
+  "pitch": "A 16 color terminal built for God. You are God.",
   "acknowledge": "brighten",
   "font": "'Courier New', ui-monospace, monospace",
   "colors": {

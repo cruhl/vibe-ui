@@ -35,8 +35,11 @@ asked, fully), stayed (did it stay in every direction so far rather than drift b
 premise), fun (coherent and fun), fresh (did the world move on rather than loop), goal (does it
 still serve a goal the person stated) and invented (5 when it never made up intent the person did
 not state), and each session once for evolving. Also reports, from each run's log, the agent's
-context size and timings per call. Prints the means per criterion and writes sessions.json, judge.json and
-summary.txt to .agent/evals/follow/<time>-<label>/. Kills the server and browser it started.
+context size and timings per call, and for every answer the agent wrote (each direction turn,
+listed one by one, and each pick no guess covered) when its change settled after the input, its
+change line count and its first frame against the app's 10 s deadline. Prints the means per
+criterion and writes sessions.json, judge.json and summary.txt to
+.agent/evals/follow/<time>-<label>/. Kills the server and browser it started.
 
   --preset <id>      repeatable (default: the presets in src/eval/follow.json)
   --session <name>   follow, wander or long, repeatable (default follow and wander)
@@ -90,6 +93,10 @@ const Turn = z.object({
   lines: z.array(z.string()),
   prompt: z.string(),
   failed: z.string().nullable(),
+  inputID: z.string().nullable().default(null),
+  readyMs: z.number().nullable().default(null),
+  lineCount: z.number().nullable().default(null),
+  firstFrameSeconds: z.number().nullable().default(null),
 });
 type Turn = z.infer<typeof Turn>;
 const Call = z.object({
@@ -118,6 +125,7 @@ const Snapshot = z.object({
   inputs: z.array(
     z.object({
       inputID: z.string(),
+      t: z.number(),
       outcome: z.string(),
       firstFrameAt: z.number().nullable(),
       failed: z.string().nullable(),
@@ -145,6 +153,7 @@ const readSnapshot = `(() => {
     runID: controller.summary().runID,
     inputs: state.inputs.map((input) => ({
       inputID: input.inputID,
+      t: input.t,
       outcome: input.outcome,
       firstFrameAt: input.firstFrameAt,
       failed: input.failed,
@@ -272,15 +281,31 @@ async function runSession(
         lines: stripGuesses(after?.rootLines ?? []),
         prompt: after === null ? "" : promptFrom(after),
         failed: input === null ? "no answer" : input.failed,
+        inputID: input?.inputID ?? null,
+        readyMs: null,
+        lineCount: null,
+        firstFrameSeconds:
+          input?.firstFrameAt == null
+            ? null
+            : Math.round((input.firstFrameAt - input.t) * 100) / 100,
       };
       turns.push(turn);
       log(
         `${preset}/${session} turn ${turn.turn} ${did}: ${turn.outcome ?? "?"}${turn.failed === null ? "" : ` failed ${turn.failed}`}, ${turn.lines.length} lines`,
       );
     }
-    calls = agentCalls(
-      await page.evaluate(() => window.vibeUI?.summaryEvents() ?? []).catch(() => []),
-    );
+    const events = await page.evaluate(() => window.vibeUI?.summaryEvents() ?? []).catch(() => []);
+    calls = agentCalls(events);
+    const ready = readyOf(events);
+    const frames = firstFramesOf(events);
+    for (const turn of turns) {
+      const frame = turn.inputID === null ? undefined : frames.get(turn.inputID);
+      if (frame !== undefined) turn.firstFrameSeconds = frame;
+      const found = turn.inputID === null ? undefined : ready.get(turn.inputID);
+      if (found === undefined) continue;
+      turn.readyMs = found.readyMs;
+      turn.lineCount = found.lines;
+    }
     await page.evaluate(() => window.vibeUI?.end("follow-eval")).catch(() => undefined);
   } catch (error: unknown) {
     log(`${preset}/${session} failed: ${String(error)}`);
@@ -299,6 +324,47 @@ const Done = z.looseObject({
   firstTokenMs: z.number().nullable(),
   doneMs: z.number(),
 });
+
+const Ready = z.looseObject({
+  kind: z.literal("turn_ready"),
+  inputID: z.string(),
+  readyMs: z.number(),
+  lines: z.number(),
+});
+const Answered = z.looseObject({
+  kind: z.literal("response"),
+  inputID: z.string(),
+  firstFrameSeconds: z.number().nullable(),
+});
+
+/** Each input's first answer frame, in seconds from the input; a refilm later does not move it. */
+function firstFramesOf(events: readonly unknown[]): Map<string, number> {
+  const frames = new Map<string, number>();
+  for (const event of events) {
+    const parsed = Answered.safeParse(event);
+    if (!parsed.success || parsed.data.firstFrameSeconds === null) continue;
+    if (!frames.has(parsed.data.inputID))
+      frames.set(parsed.data.inputID, Math.round(parsed.data.firstFrameSeconds * 100) / 100);
+  }
+  return frames;
+}
+
+/** When each answer the agent wrote settled, from the input, and how many change lines it had. */
+function readyOf(events: readonly unknown[]): Map<string, { readyMs: number; lines: number }> {
+  return new Map(
+    events.flatMap((event) => {
+      const parsed = Ready.safeParse(event);
+      return parsed.success
+        ? [
+            [
+              parsed.data.inputID,
+              { readyMs: parsed.data.readyMs, lines: parsed.data.lines },
+            ] as const,
+          ]
+        : [];
+    }),
+  );
+}
 
 /** Every finished agent call among a run's events: context size and timings. */
 function agentCalls(events: readonly unknown[]): Call[] {
@@ -484,6 +550,27 @@ function summarize(scores: ReturnType<typeof scoresOf>, sessions: readonly Sessi
     const contexts = responds.map((call) => call.contextChars);
     return `${`${session.preset}/${session.session}`.padEnd(24)} respond ${String(responds.length).padStart(2)}: first token ${cell(mean(responds.flatMap((call) => (call.firstTokenMs === null ? [] : [call.firstTokenMs / 1000]))))} s, done ${cell(mean(responds.map((call) => call.doneMs / 1000)))} s, context ${String(contexts[0] ?? 0)} to ${String(contexts.at(-1) ?? 0)} chars (max ${String(Math.max(0, ...contexts))}); speculate ${String(calls("speculate", session.calls).length)}: done ${cell(mean(calls("speculate", session.calls).map((call) => call.doneMs / 1000)))} s`;
   });
+  const written = (told: boolean) =>
+    sessions.flatMap((session) =>
+      session.turns.filter((turn) => turn.readyMs !== null && turn.did.startsWith("told") === told),
+    );
+  const spread = (numbers: readonly number[]) =>
+    numbers.length === 0 ? "-" : `mean ${cell(mean(numbers))} max ${cell(Math.max(...numbers))}`;
+  const latency = ([told, name]: readonly [boolean, string]) => {
+    const rows = written(told);
+    const frames = rows.flatMap((turn) =>
+      turn.firstFrameSeconds === null ? [] : [turn.firstFrameSeconds],
+    );
+    return `${name.padEnd(24)} ${String(rows.length).padStart(2)} written: ready ${spread(rows.map((turn) => (turn.readyMs ?? 0) / 1000))} s, lines ${spread(rows.map((turn) => turn.lineCount ?? 0))}, first frame ${spread(frames)} s, ${String(rows.filter((turn) => turn.firstFrameSeconds === null || turn.firstFrameSeconds > 10).length)} past 10 s or failed`;
+  };
+  const directions = sessions.flatMap((session) =>
+    session.turns
+      .filter((turn) => turn.did.startsWith("told") && turn.readyMs !== null)
+      .map(
+        (turn) =>
+          `  ${`${session.preset}/${session.session} ${String(turn.turn)}`.padEnd(26)} ready ${((turn.readyMs ?? 0) / 1000).toFixed(2)} s, ${String(turn.lineCount ?? 0)} lines, first frame ${turn.firstFrameSeconds === null ? "none" : `${turn.firstFrameSeconds.toFixed(2)} s`}`,
+      ),
+  );
   return [
     "group            asked:told asked:pick stayed fun   fresh  fresh:wander evolving:wander goal  invented",
     ...scores.map(
@@ -492,6 +579,14 @@ function summarize(scores: ReturnType<typeof scoresOf>, sessions: readonly Sessi
     ),
     "",
     ...timing,
+    "",
+    ...(
+      [
+        [true, "direction turns"],
+        [false, "written pick turns"],
+      ] as const
+    ).map(latency),
+    ...directions,
   ].join("\n");
 }
 

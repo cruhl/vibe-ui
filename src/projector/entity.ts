@@ -86,14 +86,10 @@ function placePhrase(world: World, entity: Entity): string {
   return trimEnd(world.canon.places[entity.place]?.phrase ?? "");
 }
 
-function entitySentence(
-  world: World,
-  entity: Entity,
-  pictured: ReadonlySet<string> = new Set(),
-): string {
+function entitySentence(world: World, entity: Entity): string {
   return phrase("entity", {
     place: upperFirst(placePhrase(world, entity)),
-    look: pictured.has(entity.id) ? `@${entity.id}` : lowerFirst(trimEnd(entity.look)),
+    look: lowerFirst(trimEnd(entity.look)),
     state:
       entity.state === null
         ? ""
@@ -160,6 +156,12 @@ function changeClauses(before: World, after: World, ops: readonly Op[]): string[
         }),
       ];
     }
+    if (op.op === "clear")
+      return rootArrives
+        ? []
+        : walk(before)
+            .filter((entity) => entity.parent === null)
+            .map((entity) => trimEnd(fill(after.canon.leave, { thing: definite(entity.look) })));
     if (op.op === "remove") {
       const entity = before.entities[op.id];
       if (entity === undefined) return [];
@@ -232,15 +234,31 @@ function beatsSentence(world: World, ops: readonly Op[]): string {
 }
 
 function actionSentence(
-  input: AgentInput,
+  input: AgentInput | null,
   before: World,
   after: World,
   ops: readonly Op[],
 ): string {
-  if (input.kind === "start") return after.canon.still;
+  if (input?.kind === "start") return after.canon.still;
   const change = sequence(changeClauses(before, after, ops));
+  if (input === null) return change === null ? "" : phrase("instruct", { change });
   if (input.kind === "instruct")
     return change === null ? phrase("instruct-alone") : phrase("instruct", { change });
+  if (input.kind === "point") {
+    const added = ops
+      .flatMap((op) =>
+        op.op === "add" && before.registry[op.placement.id] === undefined
+          ? [after.entities[op.placement.id]]
+          : [],
+      )
+      .find((entity) => entity?.control === "pick");
+    const seen = input.thingID === null ? undefined : before.entities[input.thingID];
+    const thing = added ?? (seen?.parent == null ? undefined : seen);
+    if (thing === undefined)
+      return change === null ? phrase("instruct-alone") : phrase("instruct", { change });
+    const approach = trimEnd(fill(before.canon.approach, { thing: named(after, thing) }));
+    return change === null ? approach : phrase("pick", { approach, change });
+  }
   const entity = before.entities[input.elementID] ?? after.entities[input.elementID];
   const target = entity === undefined ? definite(input.label) : named(before, entity);
   if (input.kind === "type")
@@ -271,7 +289,7 @@ function speech(world: World, ops: readonly Op[]): string[] {
   });
 }
 
-function soundscape(after: World, input: AgentInput, ops: readonly Op[]): string {
+function soundscape(after: World, input: AgentInput | null, ops: readonly Op[]): string {
   const rung = after.canon.ladder[after.rung];
   const sounds = [
     ...speech(after, ops),
@@ -281,53 +299,22 @@ function soundscape(after: World, input: AgentInput, ops: readonly Op[]): string
   ];
   return phrase("soundscape", {
     ambient: sentence(after.canon.ambient),
-    select: input.kind === "click" ? sentence(after.canon.selectSound) : "",
+    select:
+      input?.kind === "click" || input?.kind === "point" ? sentence(after.canon.selectSound) : "",
     sounds: sounds.map(sentence).join(" "),
   });
 }
 
 /** Removes dashes and quotation marks and collapses spaces, the last step before every prompt. */
 export function sanitize(text: string): string {
-  const labels: string[] = [];
   return text
-    .replace(labelPattern, (label) => `\uE000${labels.push(label) - 1}\uE000`)
     .replace(/[‐-―−]/g, " ")
     .replace(/(\S)-(?=\S)/g, "$1 ")
     .replace(/\s-\s/g, " ")
     .replace(/["“”‘’]/g, (mark) => (mark === "’" ? "'" : ""))
     .replace(/[ \t]+/g, " ")
     .replace(/ +([.,])/g, "$1")
-    .replace(/\uE000(\d+)\uE000/g, (_whole, index: string) => labels[Number(index)] ?? "")
     .trim();
-}
-
-/** A picture label in a prompt: `@` and an entity id. */
-export const labelPattern = /@[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*/g;
-
-/**
- * Which things a clip shows by their stored pictures, within the reference counts the model has
- * warmed (0, 1 or 9): the things returning to view this clip that have a picture, one of them, or
- * nine when nine or more return at once, top-level ones first.
- */
-export function chooseReferences(
-  before: World,
-  after: World,
-  ops: readonly Op[],
-  hasPicture: (id: string) => boolean,
-): string[] {
-  const returning = walk(after)
-    .filter((entity) =>
-      ops.some(
-        (op) =>
-          op.op === "add" &&
-          op.placement.id === entity.id &&
-          before.registry[entity.id] !== undefined,
-      ),
-    )
-    .filter((entity) => hasPicture(entity.id))
-    .map((entity) => entity.id);
-  if (returning.length >= 9) return returning.slice(0, 9);
-  return returning.slice(0, 1);
 }
 
 /** Estimated tokens of a prompt: about four characters each, the same for every projector. */
@@ -345,27 +332,28 @@ function assemble(description: string[], sound: string): string {
 /**
  * Projects a world and the ops that led to it into the full H3 prompt: opener, the approach and
  * every change of the turn as one cascade, the beats through the middle, the settle in the last
- * second, every entity in paint order (a referenced one by its `@id` picture label), the
+ * second, every entity in paint order, the
  * composition, the world's lettering once when anything in view is printed, the rung, filler,
  * and the style spine last, then the soundscape with any speech. Pads with the world's filler
- * sentences up to the band and drops the rung's ambient first when over.
+ * sentences up to the band and drops the rung's ambient first when over. A clip a follow-up
+ * continues (`rests` false) leaves out the settle and stays in motion to its last frame; a null
+ * input is a follow-up itself, carrying straight on from its parent's clip with no approach.
  */
 export function projectEntity(
   after: World,
-  input: AgentInput,
+  input: AgentInput | null,
   before: World,
   ops: readonly Op[],
-  references: readonly string[] = [],
+  rests = true,
 ): Projection {
   const canon = after.canon;
   const rung = canon.ladder[after.rung];
-  const pictured = new Set(references);
   const core = [
     phrase("opener", { frame: trimEnd(canon.frame) }),
     sentence(actionSentence(input, before, after, ops)),
     beatsSentence(after, ops),
-    input.kind === "start" ? "" : sentence(canon.settle),
-    ...walk(after).map((entity) => entitySentence(after, entity, pictured)),
+    input?.kind === "start" || !rests ? "" : sentence(canon.settle),
+    ...walk(after).map((entity) => entitySentence(after, entity)),
     phrase("composition"),
     walk(after).some((entity) => resolveWords(after, entity) !== null)
       ? phrase("lettering", { lettering: trimEnd(canon.lettering) })

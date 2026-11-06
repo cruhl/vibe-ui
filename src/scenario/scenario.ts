@@ -24,6 +24,8 @@ export interface Scenario {
   moments: ScenarioMoments | null;
   /** The picker's art from its baked opening, when a bake left one in its folder. */
   card: ScenarioCard | null;
+  /** Its place on the picker from its folder's `picker.json`, lowest first; null sorts last. */
+  order: number | null;
 }
 
 /**
@@ -82,5 +84,6 @@ export function scenarioFromFiles(
     createdAt,
     moments: null,
     card: null,
+    order: null,
   };
 }

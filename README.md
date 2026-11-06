@@ -31,7 +31,7 @@ Reactor sessions bill while open. **End** closes every session, and so does clos
 
 ## Hosted play and your own keys
 
-- **Hosted play.** The Cloudflare Worker in `deploy/` holds the keys as secrets. The page calls it at `/api` and never sees a key. The Worker mints a short-lived Reactor token for each session, streams the agent's calls, forwards Jev and picture requests, and stores shared worlds. It answers only the site's own origin, under per-visitor rate limits, size caps and model allowlists. A visitor holds at most two Reactor sessions and the site five, each ended after ten minutes. One deploy-time switch turns hosted play off.
+- **Hosted play.** The Cloudflare Worker in `deploy/` holds the keys as secrets. The page calls it at `/api` and never sees a key. The Worker mints a short-lived Reactor token for each session, streams the agent's calls, forwards Jev and picture requests, and stores shared worlds. It answers only the site's own origin, under per-visitor rate limits, size caps and model allowlists. A visitor holds at most two Reactor sessions and the site five, each ended after ten minutes. One deploy-time switch turns hosted play off. Play is logged for debugging.
 - **Your own keys.** **Use your own keys** at the foot of the world picker (or `?keys=1`) saves your keys in this browser and sends each call straight to its provider. Jev's calls go through the page's `/jev` route, because TypeSafe rejects browser origins; the dev server proxies it locally and the Worker forwards it when hosted.
 
 To deploy your own copy, see `pnpm ship --help`.

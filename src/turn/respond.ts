@@ -1,9 +1,10 @@
-import type { AgentInput } from "../agent/index.ts";
+import { RefusalError, type AgentInput } from "../agent/index.ts";
 import { describeChange } from "../projector/index.ts";
 import { record } from "../run-log/index.ts";
 import { parseLine, type Draft, type World } from "../state/index.ts";
 import { draftProblems, newDraft, usableDraft } from "./draft.ts";
 import type { GuessTaker } from "./guesses.ts";
+import refusedPrompt from "./refused.md?raw";
 
 /** How a committed answer came about, for the log. */
 export interface TurnStats {
@@ -30,21 +31,25 @@ export interface RespondOptions {
   ) => Promise<void> | null;
   /** The change so far, once a line applies. */
   onProgress: (beat: string | null) => void;
-  /** The change is settled: films it, and returns where the guesses that follow go, or null. */
-  onCommit: (draft: Draft, stats: TurnStats) => GuessTaker | null;
+  /**
+   * The change is settled: films it, and returns where the follow-ups and guesses that follow go,
+   * or null. `continues` says a follow-up header settled it, so a follow-up clip comes next.
+   */
+  onCommit: (draft: Draft, stats: TurnStats, continues: boolean) => GuessTaker | null;
   /** The stream has ended after a commit: every guess is in. */
   onWritten: () => void;
-  /** The turn failed with no usable change. */
-  onFail: (detail: string) => void;
+  /** The turn failed with no usable change; `refused` when the model declined it even re-asked. */
+  onFail: (detail: string, refused: boolean) => void;
 }
 
 /**
  * Answers an input in the line format. Each line applies to a draft of the world as it closes; the
- * first guess header, or the end of the stream, settles the change and commits it while guesses
- * keep streaming to the taker the commit returns. Rejected lines are dropped; a turn left with no
+ * first follow-up or guess header, or the end of the stream, settles the change and commits it
+ * while follow-ups and guesses keep streaming to the taker the commit returns. Rejected lines are dropped; a turn left with no
  * usable change (or, with `errors`, any rejected line) is asked again once with its problems
  * listed, under its own short deadline, and the second answer is used, or the first when only it
- * was usable.
+ * was usable. A turn the model declines is asked again once, its problem saying the world is
+ * made up fiction, and fails as refused when declined again.
  */
 export function respond(input: AgentInput, options: RespondOptions): void {
   const { inputID, world, signal } = options;
@@ -54,13 +59,13 @@ export function respond(input: AgentInput, options: RespondOptions): void {
   let reasked = false;
   let committed = false;
   let earlier: Draft | null = null;
-  const commit = (draft: Draft) => {
+  const commit = (draft: Draft, continues = false) => {
     committed = true;
-    guesses = options.onCommit(draft, {
-      readyMs: Math.round(performance.now() - started),
-      rejected,
-      reasked,
-    });
+    guesses = options.onCommit(
+      draft,
+      { readyMs: Math.round(performance.now() - started), rejected, reasked },
+      continues,
+    );
   };
   const attempt = (problems: readonly string[]) => {
     const attemptAbort = new AbortController();
@@ -82,9 +87,9 @@ export function respond(input: AgentInput, options: RespondOptions): void {
               commit(earlier);
               return;
             }
-            options.onFail(`the re-ask missed its ${options.reaskMs} ms deadline`);
+            options.onFail(`the re-ask missed its ${options.reaskMs} ms deadline`, false);
           }, options.reaskMs);
-    const settle = (): boolean => {
+    const settle = (continues = false): boolean => {
       const usable = usableDraft(draft);
       const reask = options.reask === "errors" ? draft.errors.length > 0 || !usable : !usable;
       if (reask && !reasked) {
@@ -98,16 +103,16 @@ export function respond(input: AgentInput, options: RespondOptions): void {
       }
       if (!usable && earlier !== null) {
         record("reask_unusable", { inputID, kept: "first answer" });
-        commit(earlier);
+        commit(earlier, continues);
         return true;
       }
       if (!usable) {
         record("turn_valid", { inputID, projector: "entity", valid: false });
         attemptAbort.abort();
-        options.onFail("no usable change after a re-ask");
+        options.onFail("no usable change after a re-ask", false);
         return false;
       }
-      commit(draft);
+      commit(draft, continues);
       return true;
     };
     const take = (line: string) => {
@@ -122,8 +127,8 @@ export function respond(input: AgentInput, options: RespondOptions): void {
         return;
       }
       const parsed = parseLine(line);
-      if (parsed.ok && parsed.op.op === "guess") {
-        if (settle()) take(line);
+      if (parsed.ok && (parsed.op.op === "guess" || parsed.op.op === "follow")) {
+        if (settle(parsed.op.op === "follow")) take(line);
         return;
       }
       const error = draft.push(line, parsed);
@@ -152,8 +157,16 @@ export function respond(input: AgentInput, options: RespondOptions): void {
           return;
         }
         if (attemptAbort.signal.aborted && reasked) return;
+        const refused = error instanceof RefusalError;
+        if (refused && !reasked) {
+          reasked = true;
+          earlier = null;
+          record("reask_refused", { inputID, refusal: error.message });
+          attempt([refusedPrompt.trim()]);
+          return;
+        }
         record("turn_valid", { inputID, projector: "entity", valid: false });
-        options.onFail(String(error));
+        options.onFail(String(error), refused);
       })
       .finally(() => {
         if (reaskTimer !== null) clearTimeout(reaskTimer);

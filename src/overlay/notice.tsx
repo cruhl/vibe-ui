@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { routeURL, scenarioURL } from "../route/index.ts";
+import { getRunID } from "../run-log/index.ts";
 import { shutDownThen } from "./shutdown.ts";
 
 interface NoticeInput {
@@ -38,10 +39,25 @@ function failureCopy(failed: string): { text: string; retry: boolean } {
   if (name === "enqueue_refused")
     return { text: "Can't film that one. Try something else.", retry: false };
   if (slowFailures.has(name)) return { text: "That took too long.", retry: true };
+  if (name === "agent_refused")
+    return { text: "The AI model refused to write that one.", retry: true };
   if (agentFailures.has(name)) return { text: "The world got stuck on that one.", retry: true };
   return { text: "That scene didn't come through.", retry: true };
 }
 const idleHintMs = 6000;
+
+/**
+ * What went wrong and this page's session id, selectable, so the person can hand the id to the
+ * owner, who pulls the session's whole log with it.
+ */
+function FailureDetails({ failed }: { failed: string }) {
+  return (
+    <p className="notice-details" data-testid="notice-details">
+      <span>{failed}</span>
+      <span className="notice-session">Session {getRunID()}</span>
+    </p>
+  );
+}
 
 /**
  * The stage's plain-language voice, the same for every world: a first-time hint that the picture
@@ -79,6 +95,7 @@ export function Notice({
       ? last.inputID
       : null;
   const [dismissed, setDismissed] = useState<string | null>(null);
+  const [detailsFor, setDetailsFor] = useState<string | null>(null);
   const [hintFor, setHintFor] = useState<string | null>(null);
   const answeredID = last !== undefined && last.firstFrameAt !== null ? last.inputID : null;
   const waitingForFirst = running && accepting && !paused && inputs.length === 1;
@@ -101,6 +118,7 @@ export function Notice({
       <div className="notice notice-card" role="alert" data-testid="notice-opening">
         <p className="notice-title">{worldName} didn't open</p>
         <p className="notice-body">The first scene didn't come through.</p>
+        {opening.failed === null ? null : <FailureDetails failed={opening.failed} />}
         <div className="notice-actions">
           <button type="button" className="button-primary" onClick={onRetry} autoFocus>
             Try again
@@ -116,6 +134,16 @@ export function Notice({
     return (
       <div className="notice notice-toast" role="status" data-testid="notice-failed">
         <span>{failure.text}</span>
+        <button
+          type="button"
+          className="notice-dismiss notice-more"
+          aria-expanded={detailsFor === lastFailed}
+          onClick={() => {
+            setDetailsFor(detailsFor === lastFailed ? null : lastFailed);
+          }}
+        >
+          Details
+        </button>
         {failure.retry ? (
           <button
             type="button"
@@ -138,6 +166,9 @@ export function Notice({
         >
           OK
         </button>
+        {detailsFor === lastFailed && last?.failed != null ? (
+          <FailureDetails failed={last.failed} />
+        ) : null}
       </div>
     );
   if (hintKey !== null && hintFor === hintKey)

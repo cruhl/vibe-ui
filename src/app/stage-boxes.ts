@@ -1,9 +1,8 @@
-import type { AssetLibrary } from "../assets/index.ts";
 import { cleanBoxes, heldVerdict, lingers, readyPresence } from "../boxes/index.ts";
 import { getJevConnection, type Keys } from "../keys/index.ts";
 import type { Memory } from "../memory/index.ts";
 import type { Moment } from "../moments/index.ts";
-import { captureFrame, captureStill, cropStill } from "../frame/index.ts";
+import type { Frame } from "../frame/index.ts";
 import { boxElements, jevDeadline, type BoxExtras, type ElementBox } from "../jev/index.ts";
 import { now, record, withDeadline } from "../run-log/index.ts";
 import type { Ahead } from "./ahead.ts";
@@ -19,17 +18,22 @@ const heldAttempts = 3;
 /** What the stage's boxing asks of the controller that owns it. */
 export interface StageBoxesHost {
   readonly clips: Clips;
-  readonly ahead: Ahead;
-  readonly memory: Memory;
-  readonly assets: AssetLibrary;
+  readonly ahead: Pick<
+    Ahead,
+    "tree" | "boxingOf" | "openGuesses" | "rankedCount" | "applyLikelihoods"
+  >;
+  readonly memory: Pick<Memory, "tail">;
   state: () => AppState;
   set: (partial: Partial<AppState>) => void;
-  video: () => HTMLVideoElement | null;
+  /** The frame on screen, or null when there is none to read. */
+  frame: () => Frame | null;
   keys: () => Keys | null;
   /** The clip that answers the latest input, the one the stage is or will be showing. */
   committed: () => string | null;
   /** Whether the clip on screen has settled after its change. */
   settled: () => boolean;
+  /** Whether a clip plays on stage, live or local. */
+  playing: () => boolean;
   showClipState: (clipID: string) => void;
   captureHeld: (clipID: string) => void;
   saveFrame: (clipID: string, moment: string, frame?: Blob | null) => void;
@@ -43,7 +47,8 @@ export interface StageBoxesHost {
 
 /**
  * The boxes of the picture on screen: Jev asked about the frame while it plays and once it holds,
- * or a local moment's stored boxes; the held frame's checks, which open input or refilm the clip;
+ * or a local moment's stored boxes; the held frame's checks, which refilm a clip that fails them
+ * in the background; input opens on every held frame, checked or not;
  * and the pictures kept of every thing that first settles on screen.
  */
 export class StageBoxes {
@@ -105,26 +110,56 @@ export class StageBoxes {
     }
     this.apply(moment);
     host.saveFrame(clipID, "held", moment.held);
-    if (moment.status === "rejected") return;
-    void this.pictures(clipID, moment.held);
     host.set({ heldReady: true });
-    record("ready_for_input", { clipID, stored: true });
+    record("ready_for_input", { clipID, stored: true, rejected: moment.status === "rejected" });
+  }
+
+  /**
+   * Whether the held frame of this clip is the one on stage: it answers the latest input, or the
+   * refilm that answers it now is still being built.
+   */
+  onStage(clipID: string): boolean {
+    const committed = this.host.committed();
+    return (
+      committed === clipID ||
+      (committed !== null && this.host.clips.get(committed)?.refilmOf === clipID)
+    );
+  }
+
+  /**
+   * Opens input on the held frame on stage once nothing plays and no input is being answered, as
+   * after a failed answer or a clip that finished off the answer's track. A view with no boxes
+   * takes every click as a point. Returns whether input is open.
+   */
+  reopen(reason: string): boolean {
+    const host = this.host;
+    const state = host.state();
+    if (state.phase !== "running" || state.locked !== null || state.firstFrames === 0) return false;
+    if (state.playingClipID !== null || host.playing()) return false;
+    this.open(host.committed(), { reason });
+    return true;
   }
 
   /**
    * Boxes the held frame of the clip on screen and checks it shows what its state says: a frame
-   * that does not is refilmed once in the background, and one that does opens input.
+   * that does not is refilmed once in the background. Input opens either way, and on a frame Jev
+   * could not box at all, unchecked.
    */
   async held(clipID: string): Promise<void> {
     const host = this.host;
     host.showClipState(clipID);
     host.captureHeld(clipID);
-    for (let attempt = 0; attempt < heldAttempts; attempt++) {
-      if (host.committed() !== clipID || host.state().playingClipID !== null) return;
-      if (await this.pass("held")) break;
+    let seen = false;
+    for (let attempt = 0; attempt < heldAttempts && !seen; attempt++) {
+      if (!this.onStage(clipID) || host.state().playingClipID !== null) return;
+      seen = await this.pass("held");
     }
-    if (host.committed() !== clipID) return;
+    if (!this.onStage(clipID) || host.state().playingClipID !== null) return;
     host.saveFrame(clipID, "held");
+    if (!seen) {
+      this.open(clipID, { checked: false });
+      return;
+    }
     const clip = host.clips.get(clipID);
     const found = this.lastFrame?.boxes ?? [];
     const presences = new Map(found.map((item) => [item.elementID, item.presence]));
@@ -165,14 +200,20 @@ export class StageBoxes {
         lingering: verdict.lingering,
         degradation: this.degradation,
       });
-      host.set({ boxes: [], boxesKey: null });
-      if (clip !== undefined && clip.refilmOf === null) host.refilm(clipID, clip);
-      return;
-    }
-    host.markInput(clipID, { boxesAt: now() });
-    void this.pictures(clipID);
+      if (clip !== undefined && clip.refilmOf === null && host.committed() === clipID)
+        host.refilm(clipID, clip);
+    } else host.markInput(clipID, { boxesAt: now() });
+    this.open(clipID, { passed: verdict.passed });
+  }
+
+  /** Marks the held frame ready for input, its view keyed so a click with no box is a point. */
+  private open(clipID: string | null, detail: Record<string, unknown>): void {
+    const host = this.host;
+    const state = host.state();
+    const key = viewKey(state.shownView);
+    if (state.boxesKey !== key) host.set({ boxes: [], boxesKey: key, boxesSource: "held" });
     host.set({ heldReady: true });
-    record("ready_for_input", { clipID });
+    record("ready_for_input", { clipID, ...detail });
   }
 
   /**
@@ -182,10 +223,9 @@ export class StageBoxes {
    */
   async pass(source: "playing" | "held"): Promise<boolean> {
     const host = this.host;
-    const video = host.video();
     const keys = host.keys();
-    if (video === null || keys === null) return false;
-    const frame = captureFrame(video);
+    if (keys === null) return false;
+    const frame = host.frame();
     if (frame === null) return false;
     if (source === "playing" && !host.settled()) return false;
     const generation = this.generation;
@@ -241,44 +281,6 @@ export class StageBoxes {
     } catch (error: unknown) {
       record("boxes_failed", { source, clipID, message: String(error) });
       return false;
-    }
-  }
-
-  /**
-   * Keeps a picture of every thing in view that has none yet, from the clean held frame of the
-   * clip that first settled with it: a boxed thing is cropped by its box, a top-level thing
-   * without a box (a room, a backdrop) keeps the whole frame. Pictures are labelled by id, so a
-   * thing that leaves and returns is filmed from its picture.
-   */
-  private async pictures(clipID: string, held: Blob | null = null): Promise<void> {
-    const host = this.host;
-    const video = host.video();
-    if ((video === null && held === null) || host.committed() !== clipID) return;
-    const shown = host.state().shownView;
-    const boxes = new Map(host.state().boxes.map((found) => [found.elementID, found]));
-    const missing = Object.values(shown.world.entities).filter(
-      (entity) =>
-        !host.assets.has(entity.id) &&
-        ((boxes.get(entity.id)?.presence ?? 0) >= readyPresence || entity.parent === null),
-    );
-    if (missing.length === 0) return;
-    const still = held ?? (video === null ? null : await captureStill(video));
-    if (still === null || host.committed() !== clipID) return;
-    for (const entity of missing) {
-      const box = boxes.get(entity.id) ?? null;
-      const image = box === null ? still : await cropStill(still, box.box);
-      if (image === null) continue;
-      host.assets.add({
-        label: entity.id,
-        description: entity.look,
-        source: box === null ? "final-frame" : "crop",
-        wholeFrame: box === null,
-        clipID,
-        scene: shown.scene,
-        degradation: this.degradation,
-        createdAt: new Date().toISOString(),
-        image,
-      });
     }
   }
 }

@@ -2,7 +2,6 @@ import { describe, expect, test } from "vitest";
 import { folderScenarios } from "../scenario/index.ts";
 import { applyOp, hashWorld, parseLine, type Op, type World } from "../state/index.ts";
 import {
-  chooseReferences,
   describeChange,
   estimateTokens,
   forbiddenWord,
@@ -190,13 +189,10 @@ describe("caveman entity projection", () => {
     expect(world.entities["fire-window"]?.look).toMatch(/^a window of tan animal hide/);
     expect(world.entities["fire-window"]?.words).toBe("FIRE.EXE");
     expect(world.entities["make-fire"]?.control).toBe("pick");
-    const references = chooseReferences(closed, world, ops, (id) => id === "fire-window");
-    expect(references).toEqual(["fire-window"]);
-    const prompt = projectEntity(world, fireClick, closed, ops, references).prompt;
+    const prompt = projectEntity(world, fireClick, closed, ops).prompt;
     expect(prompt).toContain(
-      "In the center of the screen, clear of the icon column, with a margin of stone wallpaper on every side, @fire-window, bearing",
+      "In the center of the screen, clear of the icon column, with a margin of stone wallpaper on every side, a window of tan animal hide",
     );
-    expect(chooseReferences(closed, world, ops, () => false)).toEqual([]);
   });
 
   test("a new thing needs a look, and only a voiced thing speaks", () => {

@@ -5,7 +5,7 @@ the indicator art and sounds in `busy/` are painted and recorded from the prompt
 
 ```json
 {
-  "pitch": "Run a claymation lemonade stand where every upgrade is a terrible idea that works.",
+  "pitch": "A claymation lemonade stand where every terrible upgrade works.",
   "acknowledge": "wobble",
   "font": "'Cooper Black', 'Arial Rounded MT Bold', 'Trebuchet MS', sans-serif",
   "colors": {

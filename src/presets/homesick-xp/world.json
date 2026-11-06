@@ -1,23 +1,51 @@
 {
   "canon": {
     "name": "Windows XD",
-    "frame": "a full screen view of Windows XD, a made up home computer desktop in the style of Windows XP, stretched across the whole wide 16:9 frame, the green hill wallpaper running from the far left edge to the far right edge, seen flat and straight on by a locked static camera, evenly lit",
-    "still": "The screen holds steady for the whole clip while soft white clouds drift slowly over the green hill and a warm startup chime rings out",
-    "approach": "In the first half second, {thing} lights up glossy blue and bounces",
-    "arrive": "{thing} bursts open {place} with a bright chime, already roaring with life",
-    "leave": "{thing} vanishes in a quick swoosh",
-    "settle": "In the last second everything comes to rest and the screen holds steady as a clean sharp picture of the desktop, every icon and button in its place",
+    "frame": "the inside of Windows XD, a made up 2003 home computer in the style of Windows XP, where every program is a living place the camera dives into and moves through, glossy and saturated, filling the whole wide 16:9 frame",
+    "still": "Soft white clouds drift over the green hill, a little buddy figure on the Messenger icon waves as a friend signs on with a knock, the icons shine, and in the last second the desktop holds steady",
+    "approach": "In the first half second, {thing} lights up glossy blue and the camera rushes toward it",
+    "arrive": "the camera dives straight through the glass into {thing}, already roaring with life",
+    "leave": "{thing} shatters into flying pixels and falls away behind the camera",
+    "settle": "In the last second, the camera comes to rest on a clear steady view of where it now is, every thing in its own place",
     "ambient": "A computer fan hums softly under the desk while faint suburban birdsong drifts in from outside",
-    "selectSound": "A soft plastic tap from the desk",
+    "selectSound": "A soft plastic tap and a bright startup chime",
     "lettering": "crisp small Tahoma style sans in Title Case, white on blue and black on gray",
-    "style": "crisp widescreen 16:9 screen capture, saturated colors",
+    "style": "glossy 2003 computer graphics, saturated colors",
     "places": {
-      "wallpaper": {
-        "phrase": "Filling the whole screen behind the five icons and the recycle bin",
+      "around": {
+        "phrase": "All around the camera, filling the whole frame",
         "order": 0
       },
+      "far": {
+        "phrase": "Towering in the distance straight ahead",
+        "order": 2
+      },
+      "center": {
+        "phrase": "In the middle of the view",
+        "order": 3
+      },
+      "left": {
+        "phrase": "On the left side of the view",
+        "order": 4
+      },
+      "right": {
+        "phrase": "On the right side of the view",
+        "order": 5
+      },
+      "air": {
+        "phrase": "Floating high in the air above the middle of the view",
+        "order": 6
+      },
+      "near.left": {
+        "phrase": "In the near left foreground",
+        "order": 7
+      },
+      "near.right": {
+        "phrase": "In the near right foreground",
+        "order": 8
+      },
       "column.1": {
-        "phrase": "At the top of a single column of exactly five icons hugging the far left edge of the frame",
+        "phrase": "At the top of a single column of five icons hugging the far left edge",
         "order": 1
       },
       "column.2": {
@@ -32,146 +60,68 @@
         "phrase": "Fourth in the icon column",
         "order": 4
       },
-      "column.5": {
-        "phrase": "At the bottom of the icon column",
-        "order": 5
-      },
-      "right.top": {
-        "phrase": "Near the top right corner of the desktop",
-        "order": 7
-      },
       "right.bottom": {
-        "phrase": "In the far bottom right corner of the frame, just above the taskbar",
-        "order": 8
-      },
-      "center": {
-        "phrase": "In the center of the screen, with a clear margin of wallpaper on every side",
-        "order": 10
-      },
-      "menu": {
-        "phrase": "Rising from the left end of the taskbar",
-        "order": 11
-      },
-      "bottom": {
-        "phrase": "Along the bottom edge",
-        "order": 20
-      },
-      "bar.left": {
-        "phrase": "At the left end of the taskbar",
-        "order": 1
-      },
-      "bar.middle": {
-        "phrase": "In the middle of the taskbar",
-        "order": 2
-      },
-      "bar.right": {
-        "phrase": "At the right end of the taskbar",
-        "order": 3
-      },
-      "title.right": {
-        "phrase": "In the top right corner of the window",
-        "order": 1
-      },
-      "body.top": {
-        "phrase": "Inside the window at the top",
-        "order": 2
-      },
-      "body.left": {
-        "phrase": "Inside the window on the left",
-        "order": 3
-      },
-      "body.middle": {
-        "phrase": "Inside the window in the middle",
-        "order": 4
-      },
-      "body.right": {
-        "phrase": "Inside the window on the right",
-        "order": 5
-      },
-      "body.bottom": {
-        "phrase": "Inside the window near the bottom",
-        "order": 6
-      },
-      "menu.1": {
-        "phrase": "At the top of the menu",
-        "order": 1
-      },
-      "menu.2": {
-        "phrase": "In the middle of the menu",
-        "order": 2
-      },
-      "menu.3": {
-        "phrase": "At the bottom of the menu",
-        "order": 3
-      },
-      "creature": {
-        "phrase": "Towering over the middle of the desktop",
-        "order": 25
-      },
-      "hero": {
-        "phrase": "Charging across the lower middle of the desktop",
-        "order": 26
+        "phrase": "In the far bottom right corner, just above the taskbar",
+        "order": 9
       },
       "flood": {
-        "phrase": "Bursting across the whole screen in front of everything",
+        "phrase": "Bursting across the whole frame in front of everything",
         "order": 30
       }
     },
     "ladder": [
       {
-        "mood": "a perfect cozy 2003 afternoon on the family computer",
+        "mood": "a perfect cozy 2003 afternoon, every program a place to dive into",
         "ambient": "",
         "sound": ""
       },
       {
-        "mood": "peak nostalgia, every program a joyful burst",
-        "ambient": "Sunlight glints across the glossy taskbar and icons",
-        "sound": "A dial up modem warbles and screeches faintly in another room"
+        "mood": "peak nostalgia, then something sketchy opens and popups start to breed",
+        "ambient": "Sunlight glints across glossy chrome and bright gradients",
+        "sound": "A dial up modem warbles and screeches in another room"
       },
       {
-        "mood": "infected: the virus is spreading and the desktop rots",
-        "ambient": "Glitch stripes flicker across the screen now and then",
-        "sound": "An error ding plays again and again"
+        "mood": "infected: popups multiply and the whole world glitches and tears",
+        "ambient": "Glitch stripes and scanlines rip across the whole picture",
+        "sound": "An error ding plays again and again, faster each time"
+      },
+      {
+        "mood": "the virus is a creature eating the computer alive",
+        "ambient": "Chunks of the world crumble into falling pixels",
+        "sound": "A squeaky giggle echoes through everything"
       },
       {
         "mood": "all out war: every program is a literal weapon against the monster",
-        "ambient": "Sparks and tiny loose pixels drift across the screen",
+        "ambient": "Sparks and loose pixels fly as the whole world trembles",
         "sound": "A huge heroic orchestra swells under cartoon crashes"
       },
       {
-        "mood": "the computer is fighting back and winning",
-        "ambient": "The whole screen trembles with every impact",
-        "sound": "A crowd of tiny voices cheers from inside the computer"
-      },
-      {
-        "mood": "total victory, the desktop shines brighter than ever",
-        "ambient": "The green hill gleams under a brilliant deep blue sky",
+        "mood": "the finale and total victory, brighter than ever",
+        "ambient": "Fireworks and bouncing cards fill a brilliant blue sky",
         "sound": "A triumphant fanfare plays with the startup chime"
       }
     ],
     "filler": [
-      "Every surface is flat and front facing, like a real desktop screenshot",
-      "The wallpaper and taskbar reach the far left and far right edges of the frame",
-      "Each icon label sits just beneath its icon with a soft drop shadow",
-      "The icons are glossy and rounded with smooth bright gradients",
+      "Everything is glossy 2003 computer graphics with smooth bright gradients",
+      "Rounded chrome, royal blue title bars and grass green fill the picture",
       "Edges are crisp and colors are rich and saturated",
-      "The lighting is flat and even from corner to corner",
       "All lettering is the crisp small Tahoma style sans of 2003, in Title Case",
-      "The taskbar has a smooth glossy shine with a lighter top edge",
-      "The colors are bright grass green, deep sky blue and clean white",
-      "Each icon sits on a clean patch of wallpaper with even spacing",
-      "The whole picture is sharp and steady",
-      "The screen fills the frame edge to edge with a steady exposure",
-      "Lettering is small, crisp and high contrast, with clear space around every word",
-      "The framing stays fixed on the whole screen from start to end"
+      "Lettering is small and high contrast, with clear space around every word",
+      "Each thing that can be chosen sits apart with open space around it",
+      "Everything is huge around the camera, like a tiny visitor inside a computer",
+      "The picture is sharp from edge to edge with a steady exposure",
+      "The whole world is in constant motion until the clip comes to rest",
+      "Light glints off glossy plastic, chrome and glass",
+      "The scene fills the wide frame from the far left edge to the far right edge",
+      "The camera ends every move steady, holding a clear view of the scene"
     ]
   },
   "entities": [
     {
-      "id": "wallpaper",
+      "id": "desktop",
       "parent": null,
-      "place": "wallpaper",
-      "look": "a wide panoramic bright green rolling grass hill under a deep blue sky with soft white clouds",
+      "place": "around",
+      "look": "a Windows XD desktop of a green rolling hill under deep blue sky over a glossy blue taskbar",
       "state": null,
       "words": null,
       "control": null,
@@ -180,7 +130,7 @@
     },
     {
       "id": "solitaire",
-      "parent": null,
+      "parent": "desktop",
       "place": "column.1",
       "look": "a glossy icon of a fanned stack of playing cards",
       "state": null,
@@ -190,19 +140,19 @@
       "voice": null
     },
     {
-      "id": "media-player",
-      "parent": null,
+      "id": "winamp",
+      "parent": "desktop",
       "place": "column.2",
-      "look": "a glossy round orange and blue play button icon",
+      "look": "a glossy icon of a yellow lightning bolt on a dark chrome badge",
       "state": null,
-      "words": "Media Player",
+      "words": "Winamp",
       "control": "pick",
       "sound": null,
       "voice": null
     },
     {
       "id": "messenger",
-      "parent": null,
+      "parent": "desktop",
       "place": "column.3",
       "look": "a glossy icon of a small green figure beside a small blue figure",
       "state": null,
@@ -213,7 +163,7 @@
     },
     {
       "id": "antivirus",
-      "parent": null,
+      "parent": "desktop",
       "place": "column.4",
       "look": "a glossy yellow shield icon with a red check mark",
       "state": null,
@@ -223,19 +173,8 @@
       "voice": null
     },
     {
-      "id": "defrag",
-      "parent": null,
-      "place": "column.5",
-      "look": "a glossy icon of a small grid of red, blue and white squares",
-      "state": null,
-      "words": "Defrag",
-      "control": "pick",
-      "sound": null,
-      "voice": null
-    },
-    {
       "id": "recycle-bin",
-      "parent": null,
+      "parent": "desktop",
       "place": "right.bottom",
       "look": "a glossy see through blue wastebasket icon",
       "state": null,
@@ -243,43 +182,7 @@
       "control": "pick",
       "sound": null,
       "voice": null
-    },
-    {
-      "id": "taskbar",
-      "parent": null,
-      "place": "bottom",
-      "look": "a bright blue glossy taskbar running the full width of the frame",
-      "state": null,
-      "words": null,
-      "control": null,
-      "sound": null,
-      "voice": null
-    },
-    {
-      "id": "start",
-      "parent": "taskbar",
-      "place": "bar.left",
-      "look": "a rounded green button with a small four color flag",
-      "state": null,
-      "words": "Start",
-      "control": null,
-      "sound": null,
-      "voice": null
-    },
-    {
-      "id": "clock",
-      "parent": "taskbar",
-      "place": "bar.right",
-      "look": "a lighter blue tray with a small digital clock",
-      "state": null,
-      "words": "$clock",
-      "control": null,
-      "sound": null,
-      "voice": null
     }
   ],
-  "facts": {
-    "clock": "3:42 PM",
-    "year": "2003"
-  }
+  "facts": {}
 }

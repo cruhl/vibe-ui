@@ -23,6 +23,7 @@
     "record-ui": "node --experimental-strip-types --no-warnings scripts/record-ui.ts",
     "key-link": "node --experimental-strip-types --no-warnings scripts/key-link.ts",
     "report": "node --experimental-strip-types --no-warnings scripts/report.ts",
+    "logs": "node --experimental-strip-types --no-warnings scripts/logs.ts",
     "eval": "node --experimental-strip-types --no-warnings scripts/eval.ts",
     "eval:builds": "node --experimental-strip-types --no-warnings scripts/eval-builds.ts",
     "eval:fixture": "node --experimental-strip-types --no-warnings scripts/eval-fixture.ts",

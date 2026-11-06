@@ -19,19 +19,43 @@ export interface Placement {
 
 /**
  * The parts of how a world is filmed that a `#` line restates, with the most words each may have:
- * the shot itself, the last second's settle, the style spine, the ambient sound, one more filler
- * sentence, and the phrase of one place, new or known.
+ * the shot itself, the approach to a chosen thing, how a new top-level thing arrives and how one
+ * leaves, the last second's settle, the style spine, the lettering, the ambient sound, the sound
+ * of a choice, one more filler sentence, and the phrase of one place, new or known.
  */
 export const filmLimits = {
   frame: 60,
+  approach: 20,
+  arrive: 25,
+  leave: 16,
   settle: 35,
   style: 8,
+  lettering: 16,
   ambient: 25,
+  select: 14,
   filler: 20,
   place: 16,
 } as const;
 export type FilmField = keyof typeof filmLimits;
 const isFilmField = (field: string): field is FilmField => Object.hasOwn(filmLimits, field);
+/** The slots each sentence template must hold, and the ones it may. */
+const templateSlots: Partial<Record<FilmField, { must: string[]; may: string[] }>> = {
+  approach: { must: ["thing"], may: [] },
+  arrive: { must: ["thing"], may: ["place"] },
+  leave: { must: ["thing"], may: [] },
+};
+
+function slotProblem(field: FilmField, text: string): string | null {
+  const slots = templateSlots[field];
+  const used = [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1] ?? "");
+  if (slots === undefined)
+    return used.length === 0 ? null : `#${field} takes no {slot}, only plain words`;
+  const missing = slots.must.find((slot) => !used.includes(slot));
+  if (missing !== undefined) return `#${field} must name the thing as {${missing}}`;
+  const stray = used.find((slot) => !slots.must.includes(slot) && !slots.may.includes(slot));
+  return stray === undefined ? null : `#${field} has no {${stray}} slot`;
+}
+
 /** The most filler sentences a world keeps once it is remade. */
 const fillerKept = 4;
 
@@ -41,13 +65,15 @@ export type Op =
   | { op: "fact"; key: string; value: string }
   | { op: "add"; placement: Placement }
   | { op: "remove"; id: string }
+  | { op: "clear" }
   | { op: "beat"; name: string | null; text: string }
   | { op: "climb" }
   | { op: "gag"; name: string }
   | { op: "sound"; text: string }
   | { op: "say"; id: string; text: string }
   | { op: "film"; field: FilmField; place: string | null; text: string }
-  | { op: "guess"; elementID: string; likelihood: number | null };
+  | { op: "guess"; elementID: string; likelihood: number | null }
+  | { op: "follow" };
 
 export type Parsed = { ok: true; op: Op } | { ok: false; error: string };
 export type Applied = { ok: true; world: World } | { ok: false; error: string };
@@ -125,6 +151,8 @@ function film(world: World, op: Extract<Op, { op: "film" }>): Applied {
   const count = wordCount(op.text);
   if (count > limit) return { ok: false, error: `#${op.field} over ${limit} words` };
   if (op.field === "style" && count < 3) return { ok: false, error: "#style needs three words" };
+  const problem = slotProblem(op.field, op.text);
+  if (problem !== null) return { ok: false, error: problem };
   const canon = world.canon;
   const next = ((): World["canon"] | string => {
     switch (op.field) {
@@ -135,6 +163,16 @@ function film(world: World, op: Extract<Op, { op: "film" }>): Applied {
           filler: [],
           ladder: canon.ladder.map((rung) => ({ ...rung, ambient: "", sound: "" })),
         };
+      case "approach":
+        return { ...canon, approach: op.text };
+      case "arrive":
+        return { ...canon, arrive: op.text };
+      case "leave":
+        return { ...canon, leave: op.text };
+      case "select":
+        return { ...canon, selectSound: op.text };
+      case "lettering":
+        return { ...canon, lettering: op.text };
       case "settle":
         return { ...canon, settle: op.text };
       case "style":
@@ -160,9 +198,10 @@ function film(world: World, op: Extract<Op, { op: "film" }>): Applied {
 
 /**
  * Parses one line of the agent's diff format. Each op is one line: `~id state | WORDS`, `=key
- * value`, `+id parent place [pick|input] | look | WORDS | state | voice`, `-id`, `! beat`,
+ * value`, `+id parent place [pick|input] | look | WORDS | state | voice`, `-id`, `-*` (everything
+ * in view), `! beat`,
  * `!name beat`, `^`, `*name`, `> sound`, `%id spoken words`, `#field text` (`#place id phrase`),
- * and the guess header `? id likelihood`.
+ * the guess header `? id likelihood` and the follow-up header `&`.
  */
 export function parseLine(raw: string): Parsed {
   const line = raw.trim();
@@ -191,6 +230,7 @@ export function parseLine(raw: string): Parsed {
     case "+":
       return parseAdd(rest);
     case "-": {
+      if (rest === "*") return { ok: true, op: { op: "clear" } };
       const [id = ""] = rest.split(/\s+/);
       return id === ""
         ? { ok: false, error: "remove takes one id" }
@@ -224,6 +264,10 @@ export function parseLine(raw: string): Parsed {
         : { ok: true, op: { op: "sound", text: rest } };
     case "#":
       return parseFilm(rest);
+    case "&":
+      return rest === ""
+        ? { ok: true, op: { op: "follow" } }
+        : { ok: false, error: "& stands alone" };
     case "?": {
       const [elementID = "", likelihood] = rest.split(/\s+/);
       if (elementID === "") return { ok: false, error: "guess needs an element id" };
@@ -369,6 +413,13 @@ export function applyOp(world: World, op: Op): Applied {
       return world.entities[op.id] === undefined
         ? { ok: false, error: `unknown id ${op.id}` }
         : { ok: true, world: removeTree(world, op.id) };
+    case "clear":
+      return {
+        ok: true,
+        world: Object.values(world.entities)
+          .filter((entity) => entity.parent === null)
+          .reduce((cleared, entity) => removeTree(cleared, entity.id), world),
+      };
     case "beat":
       if (wordCount(op.text) > lineLimits.beat)
         return { ok: false, error: `beat over ${lineLimits.beat} words` };
@@ -389,6 +440,8 @@ export function applyOp(world: World, op: Op): Applied {
       return film(world, op);
     case "guess":
       return { ok: false, error: "a guess header is not a change" };
+    case "follow":
+      return { ok: false, error: "a follow-up header is not a change" };
   }
 }
 

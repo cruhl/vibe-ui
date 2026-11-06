@@ -18,11 +18,6 @@ export interface Knobs {
    * default), or on any rejected line (`errors`).
    */
   reask: "errors" | "unusable";
-  /**
-   * A response clip starts pinned on the frame on screen (`pin`, the default: measured seams 4.9 to
-   * 7.7) or continues the clip on screen when it can (`continue`: latent seams measured up to 48).
-   */
-  respond: "continue" | "pin";
   /** The agent model for line turns, or null for the default, and its reasoning effort. */
   model: string | null;
   effort: "none" | "minimal" | "low" | "omit";
@@ -118,7 +113,6 @@ export function readRoute(search: string): Route {
       guesses: integer("guesses", 3, 0, 5),
       wide: parameters.get("wide") !== "0",
       reask: parameters.get("reask") === "errors" ? "errors" : "unusable",
-      respond: parameters.get("respond") === "continue" ? "continue" : "pin",
       model: parameters.get("model"),
       effort:
         (["minimal", "low", "omit"] as const).find((value) => value === parameters.get("effort")) ??

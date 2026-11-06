@@ -1,5 +1,6 @@
 export {
   captureFrame,
+  captureRegion,
   captureStill,
   cropStill,
   cropVideo,
@@ -9,4 +10,5 @@ export {
   heldStill,
   seamFromStill,
   thumbnail,
+  type Frame,
 } from "./frame.ts";

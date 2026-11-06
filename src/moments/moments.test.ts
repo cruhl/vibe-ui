@@ -4,7 +4,9 @@ import {
   answers,
   byLikelihood,
   contentHash,
+  isFollow,
   momentKey,
+  nextInput,
   rootKey,
   type Moment,
   type MomentInput,
@@ -40,7 +42,6 @@ function moment(
     likelihood,
     memory: { input: "", response: "" },
     prompt: "p",
-    pictureLabels: [],
     status: "written",
     start: null,
     clipID: null,
@@ -118,6 +119,27 @@ describe("the moment tree", () => {
     expect(tree.pathProbability(stairs)).toBeCloseTo(0.3);
   });
 
+  test("a follow-up answers no input and counts no step, and its chain re-roots onward", () => {
+    const { tree, root, door } = build();
+    const next = moment("next", "root", nextInput, 1);
+    const then = moment("then", "next", nextInput, 1);
+    const ghost = moment("chained-ghost", "then", click("ghost"), 0.5);
+    for (const node of [next, then, ghost]) expect(tree.add(node)).toBe(true);
+    expect(isFollow(next) && !isFollow(door)).toBe(true);
+    expect(answers(next, click(""))).toBe(false);
+    expect(tree.findMatch(click("ghost"))).toBeNull();
+    expect([tree.depth(ghost), tree.steps(ghost), tree.steps(then)]).toEqual([3, 1, 0]);
+    expect(
+      tree
+        .reRoot(next)
+        .map((node) => node.key)
+        .sort(),
+    ).toEqual(["door", "ghost", "root", "stairs", "window"].sort());
+    expect(tree.holds(root)).toBe(false);
+    tree.reRoot(then);
+    expect(tree.findMatch(click("ghost"))).toBe(ghost);
+  });
+
   test("re-rooting prunes everything outside the new root's subtree", () => {
     const { tree, root, door, window, ghost, stairs } = build();
     const pruned = tree.reRoot(door);
@@ -153,10 +175,12 @@ const view = (
   probability: number,
   index = 0,
   status: MomentStatus = "written",
+  follow = false,
 ): NodeView => ({
   key,
   parentKey,
   depth,
+  follow,
   probability,
   index,
   status,
@@ -183,6 +207,27 @@ describe("the scheduler", () => {
       { key: "b", slot: 0, start: "latent" },
       { key: "a", slot: 1, start: "pinned" },
       { key: "c", slot: 2, start: "pinned" },
+    ]);
+  });
+
+  test("the follow-up of the moment on stage continues it first, its guesses after it", () => {
+    const plan = schedule(
+      [
+        view("root", null, 0, 1, 0, "ready"),
+        { ...view("next", "root", 0, 1, 0, "written", true), children: "written" },
+        view("a", "next", 1, 0.6, 0),
+        view("b", "root", 1, 0.9, 0),
+      ],
+      [
+        { key: "root", retainedOn: 0, held: true },
+        { key: "next", retainedOn: null, held: false },
+      ],
+      sessions([0, 0]),
+      { ...limits, perSession: 1 },
+    );
+    expect(plan.film).toEqual([
+      { key: "next", slot: 0, start: "latent" },
+      { key: "b", slot: 1, start: "pinned" },
     ]);
   });
 
@@ -339,6 +384,7 @@ describe("a simulated pool", () => {
                   key: node.key,
                   parentKey: node.parentKey,
                   depth,
+                  follow: false,
                   probability: tree.pathProbability(node),
                   index: node.index,
                   status: node.status,

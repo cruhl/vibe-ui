@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { json, overLimit, readJSON, reply, visitorOf, type Environment } from "./http.ts";
+import { note } from "./log.ts";
 
 const siteverifyURL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const cookieName = "__Host-vibe-pass";
@@ -169,8 +170,10 @@ export async function passRoute(environment: Environment, request: Request): Pro
   if (limited !== null) return limited;
   const body = await readJSON(request, 4096, PassBody);
   if ("failed" in body) return body.failed;
-  if (!(await spendToken(environment, body.value.token)))
+  if (!(await spendToken(environment, body.value.token))) {
+    note({ turnstile: "replayed" });
     return reply(403, "The challenge did not pass");
+  }
   const address = request.headers.get("CF-Connecting-IP");
   const answer = await fetch(siteverifyURL, {
     method: "POST",
@@ -186,6 +189,7 @@ export async function passRoute(environment: Environment, request: Request): Pro
   const verdict = Verdict.safeParse(await answer.json().catch(() => null));
   if (!verdict.success) return reply(502, "The challenge service answered nonsense");
   const { success, hostname, action } = verdict.data;
+  note({ turnstile: success ? "passed" : "refused", hostname, action });
   if (!success || hostname !== new URL(request.url).hostname || action !== passAction)
     return reply(403, "The challenge did not pass");
   const expiresAt = Date.now() + passSeconds * 1000;
@@ -212,5 +216,6 @@ export async function requirePass(
     value !== null &&
     passConfigured(environment) &&
     (await passValid(environment.PASS_SECRET ?? "", visitorOf(request), value, Date.now()));
+  note({ pass: value === null ? "missing" : valid ? "valid" : "invalid" });
   return valid ? null : reply(403, "A fresh pass is required", { "X-Pass": "required" });
 }

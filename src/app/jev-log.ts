@@ -1,5 +1,5 @@
 import { captureFile } from "../capture/index.ts";
-import type { BoxResult } from "../jev/index.ts";
+import type { BoxResult, PointResult } from "../jev/index.ts";
 import { record } from "../run-log/index.ts";
 
 function decodeJPEG(base64: string): Blob {
@@ -41,9 +41,37 @@ export function logJev(
   });
 }
 
+/** Logs one answered point question: `point_seen`, then the crop it read and its whole exchange. */
+export function logPointJev(
+  inputID: string,
+  point: { x: number; y: number },
+  cropBase64: string,
+  result: PointResult,
+  latencyMs: number,
+): void {
+  record("point_seen", {
+    inputID,
+    ...point,
+    thingID: result.thingID,
+    probability: Math.round(result.probability * 100) / 100,
+    latencyMs,
+    inputTokens: result.inputTokens,
+    model: result.model,
+  });
+  const frame = `jev/point-${inputID}.jpg`;
+  captureFile(frame, decodeJPEG(cropBase64));
+  record("jev_exchange", {
+    frame,
+    source: "point",
+    clipID: null,
+    questions: result.questions,
+    answers: result.answers,
+  });
+}
+
 /** How a guess is put to Jev for ranking. */
 export function guessQuestion(guess: {
-  input: { action: "click" | "type"; text: string | null } | null;
+  input: { action: string; text: string | null } | null;
   label: string;
 }): string {
   return guess.input?.action === "type"

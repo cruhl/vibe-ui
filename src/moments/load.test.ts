@@ -27,7 +27,6 @@ function baked(): BakedTree {
       beat: null,
       likelihood: 0.5,
       memory: { input: `click ${element.label}`, response: "" },
-      pictureLabels: [],
       start: "pinned",
       status: "ready",
       boxes: [],

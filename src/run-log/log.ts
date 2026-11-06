@@ -1,3 +1,5 @@
+import { flushSink, sinkEvent } from "./sink.ts";
+
 export type RunEventPayload = Record<string, unknown>;
 
 export interface RunEvent extends RunEventPayload {
@@ -10,7 +12,7 @@ type Listener = (events: readonly RunEvent[]) => void;
 
 const startedAt = performance.now();
 const keepaliveLimit = 60_000;
-const runID = new Date().toISOString().replace(/[:.]/g, "-");
+const runID = `${new Date().toISOString().replace(/[:.]/g, "-")}-${crypto.randomUUID().slice(0, 8)}`;
 const events: RunEvent[] = [];
 const listeners = new Set<Listener>();
 let pending: RunEvent[] = [];
@@ -26,7 +28,10 @@ export function eventSeconds(timeStamp: number): number {
   return Math.max(0, now() - Math.max(0, performance.now() - timeStamp) / 1000);
 }
 
-/** The identifier of this run, also the JSONL file name in dev. */
+/**
+ * The identifier of this run: its start time and a random suffix. The JSONL file name in dev,
+ * and in production the session id the deployment's logs are kept under.
+ */
 export function getRunID(): string {
   return runID;
 }
@@ -47,7 +52,10 @@ function flush(): void {
   });
 }
 
-/** Stamps an event on the session clock, keeps it in memory, and in dev streams it to disk. */
+/**
+ * Stamps an event on the session clock, keeps it in memory, and streams it on: in dev to disk, in
+ * production to the deployment's log.
+ */
 export function record(kind: string, payload: RunEventPayload = {}): RunEvent {
   const event: RunEvent = { ...payload, kind, t: now(), at: new Date().toISOString() };
   events.push(event);
@@ -56,6 +64,7 @@ export function record(kind: string, payload: RunEventPayload = {}): RunEvent {
     pending.push(event);
     flushTimer ??= setTimeout(flush, 300);
   }
+  if (import.meta.env.PROD) sinkEvent(runID, event);
   return event;
 }
 
@@ -63,6 +72,7 @@ export function record(kind: string, payload: RunEventPayload = {}): RunEvent {
 export function flushNow(): void {
   if (flushTimer !== null) clearTimeout(flushTimer);
   if (import.meta.env.DEV) flush();
+  if (import.meta.env.PROD) flushSink();
 }
 
 /** Every event recorded so far, oldest first. */

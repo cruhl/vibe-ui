@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { AssetLibrary } from "../assets/index.ts";
 import { captureFile } from "../capture/index.ts";
 import { hashText } from "../text/index.ts";
 import {
@@ -23,8 +22,6 @@ const rateLimitMaxMs = 8000;
 const retainedClips = 8;
 /** How long a send waits for a session that is not ready yet. */
 const slotReadyMs = 3000;
-/** Reference counts the session has warmed; any other count is trimmed to one. */
-const warmedReferenceCounts = [0, 1, 9];
 const uploadCacheSize = 40;
 
 /**
@@ -87,7 +84,7 @@ export interface SendFrom {
 export type ClipStart = "pinned" | "continued" | "fresh";
 
 /** Why a clip was not sent. */
-export type Unsent = "ended" | "slot not ready" | "unknown picture" | "not wanted" | "refused";
+export type Unsent = "ended" | "slot not ready" | "not wanted" | "refused";
 
 export type Sent = { sent: true; clipID: string } | { sent: false; reason: Unsent };
 
@@ -104,13 +101,8 @@ export class SessionPool {
 
   constructor(
     private readonly access: () => ReactorAccess,
-    private readonly assets: AssetLibrary,
     private readonly hooks: PoolHooks,
-  ) {
-    assets.onAdded((asset) => {
-      this.uploadEverywhere(asset.image);
-    });
-  }
+  ) {}
 
   get all(): readonly Slot[] {
     return this.slots;
@@ -315,35 +307,11 @@ export class SessionPool {
       return { sent: false, reason: "slot not ready" };
     const { inputID, guess, wanted } = from;
     let pinned = from.pinned === null ? null : await this.upload(slot, from.pinned);
-    let expanded: ReturnType<AssetLibrary["expand"]>;
-    try {
-      expanded = this.assets.expand(request.prompt, pinned === null ? 9 : 0);
-    } catch (error: unknown) {
-      record("enqueue_rejected", { slot: slotIndex, inputID, message: String(error) });
-      return { sent: false, reason: "unknown picture" };
-    }
-    const uploaded = (
-      await Promise.all(expanded.references.map((asset) => this.upload(slot, asset.image)))
-    ).filter((reference) => reference !== null);
-    const references = warmedReferenceCounts.includes(uploaded.length)
-      ? uploaded
-      : uploaded.slice(0, 1);
-    if (references.length !== uploaded.length)
-      record("references_trimmed", {
-        slot: slotIndex,
-        from: uploaded.length,
-        to: references.length,
-      });
-    if (expanded.references.length > 0)
-      record("assets_referenced", {
-        slot: slotIndex,
-        labels: expanded.references.map((asset) => asset.label),
-      });
     const source = from.continueFrom;
     const retained = source !== null && this.retains(slot, source);
     if (source !== null && !retained) record("source_not_retained", { sourceClipID: source });
-    const promptFile = `prompts/clip-${hashText(expanded.prompt)}.md`;
-    captureFile(promptFile, expanded.prompt);
+    const promptFile = `prompts/clip-${hashText(request.prompt)}.md`;
+    captureFile(promptFile, request.prompt);
     let sent: EnqueueRequest | null = null;
     const used = { continued: false };
     const attempt = async (continueFrom: string | null) => {
@@ -367,8 +335,6 @@ export class SessionPool {
       used.continued = continueFrom !== null;
       sent = {
         ...request,
-        prompt: expanded.prompt,
-        ...(references.length === 0 ? {} : { referenceImages: references }),
         ...(pinned === null ? {} : { firstFrameImage: pinned, referenceImages: [pinned] }),
         ...(continueFrom === null
           ? {}

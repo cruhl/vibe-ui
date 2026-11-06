@@ -1,10 +1,10 @@
 import { record } from "../run-log/index.ts";
 
 const databaseName = "vibe-ui";
-const version = 4;
+const version = 5;
 
 /** Object stores: keyed blobs and records that outlive a reload. */
-export const stores = ["frames", "assets", "captures", "scenarios", "moments"] as const;
+export const stores = ["frames", "captures", "scenarios", "moments"] as const;
 export type StoreName = (typeof stores)[number];
 
 let opening: Promise<IDBDatabase | null> | null = null;

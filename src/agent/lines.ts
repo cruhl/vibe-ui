@@ -15,6 +15,7 @@ import {
 import worldPrompt from "./lines-world.md?raw";
 import { splitGlued } from "./split.ts";
 import linesPrompt from "./lines.md?raw";
+import { RefusalError } from "./refusal.ts";
 
 /**
  * A line-format turn: answer an input (with the problems of a rejected try), or only guess, at
@@ -51,12 +52,13 @@ export interface LinesResult {
 }
 
 /**
- * Output token ceilings: a cascade of changes and beats plus three compact guesses fits well
- * inside a respond turn's, a guess turn gets room for each guess it asks for, and a model that
- * keeps writing past its last guess is cut off instead of running to the deadline.
+ * Output token ceilings: a cascade of changes and beats, its follow-ups and three compact guesses
+ * with one follow-up each fit well inside a respond turn's, a guess turn gets room for each guess
+ * and its follow-up, and a model that keeps writing past its last guess is cut off instead of
+ * running to the deadline.
  */
 export function outputCeiling(turn: LinesTurn): number {
-  return turn.kind === "respond" ? 640 : Math.max(520, 160 + 120 * turn.count);
+  return turn.kind === "respond" ? 1000 : Math.max(720, 160 + 180 * turn.count);
 }
 
 /** Called with each line the moment its newline arrives, and with the last line at the end. */
@@ -93,6 +95,8 @@ function describeInput(input: AgentInput): string {
       return "the session just opened";
     case "click":
       return `picked ${input.elementID} (${input.label})`;
+    case "point":
+      return `picked a spot ${String(Math.round(input.x * 100))}% across and ${String(Math.round(input.y * 100))}% down the picture, on ${input.thingID === null ? "open background" : `${input.thingID} (${input.label})`}`;
     case "type":
       return `typed ${input.text} into ${input.elementID} (${input.label})`;
     case "instruct":
@@ -129,9 +133,13 @@ function standing(world: World, memory: MemoryContext): string[] {
     "filmed:",
     `- frame: ${canon.frame}`,
     `- approach: ${canon.approach}`,
+    `- arrive: ${canon.arrive}`,
+    `- leave: ${canon.leave}`,
     `- settle: ${canon.settle}`,
     `- style: ${canon.style}`,
+    `- lettering: ${canon.lettering}`,
     `- ambient: ${canon.ambient}`,
+    `- select: ${canon.selectSound}`,
     ...canon.filler.map((sentence) => `- filler: ${sentence}`),
     "places:",
     ...Object.entries(canon.places).map(([id, place]) => `- ${id}: ${place.phrase}`),
@@ -163,6 +171,7 @@ export function linesContext(world: World, memory: MemoryContext, turn: LinesTur
     `gags: ${gags.length === 0 ? "(none yet)" : gags.join("; ")}`,
     "recent:",
     ...memory.recent,
+    ...(memory.directions.length === 0 ? [] : ["in force:", ...memory.directions]),
     `turn: ${turn.kind}`,
     `input: ${describeInput(turn.input)}`,
     ...(turn.kind === "respond" && turn.problems.length > 0
@@ -220,6 +229,7 @@ export async function streamLines(
       { signal },
     );
     let text = "";
+    let refusal = "";
     let pending = "";
     let firstTokenMs: number | null = null;
     let rawUsage: unknown = null;
@@ -282,6 +292,9 @@ export async function streamLines(
           const parts = pending.split("\n");
           pending = parts.pop() ?? "";
           for (const part of parts) if (!signal.aborted) emit(part);
+        } else if (event.type === "response.refusal.delta") {
+          onChunk();
+          refusal += event.delta;
         } else if (event.type === "response.completed" || event.type === "response.incomplete") {
           const reported = event.response.usage;
           rawUsage = reported ?? null;
@@ -297,6 +310,10 @@ export async function streamLines(
     }
     emit(pending);
     const doneMs = finish();
+    if (refusal !== "" && lines.length === 0) {
+      record("agent_refused", { callID, turn: request.turn.kind, refusal });
+      throw new RefusalError(refusal);
+    }
     return { callID, text, lines, firstTokenMs, doneMs, ...usage };
   });
 }

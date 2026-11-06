@@ -43,6 +43,42 @@ export function captureFrame(video: HTMLVideoElement, maxWidth = 1024): Frame | 
   };
 }
 
+/**
+ * One region of the current video frame, a box in frame fractions, drawn `width` pixels across
+ * at its own aspect and encoded the way `captureFrame` encodes the whole frame. Returns null
+ * before the first frame arrives.
+ */
+export function captureRegion(video: HTMLVideoElement, box: Box, width: number): Frame | null {
+  if (video.videoWidth === 0 || video.videoHeight === 0) return null;
+  const sourceWidth = (box.right - box.left) * video.videoWidth;
+  const sourceHeight = (box.bottom - box.top) * video.videoHeight;
+  if (sourceWidth <= 0 || sourceHeight <= 0) return null;
+  const canvas = scratchCanvas("region");
+  canvas.width = width;
+  canvas.height = Math.max(1, Math.round((width * sourceHeight) / sourceWidth));
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (context === null) return null;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(
+    video,
+    box.left * video.videoWidth,
+    box.top * video.videoHeight,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
+  const dataURL = canvas.toDataURL("image/jpeg", 0.85);
+  return {
+    base64: dataURL.slice(dataURL.indexOf(",") + 1),
+    width: canvas.width,
+    height: canvas.height,
+    luma: measureLuma(context, canvas.width, canvas.height),
+  };
+}
+
 function measureLuma(context: CanvasRenderingContext2D, width: number, height: number): number {
   const pixels = context.getImageData(0, 0, width, height).data;
   let total = 0;

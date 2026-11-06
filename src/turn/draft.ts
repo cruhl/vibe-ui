@@ -35,7 +35,9 @@ export function inputMemory(input: AgentInput): string {
       ? `told you: ${input.text}`
       : input.kind === "start"
         ? "start"
-        : `click ${input.label}`;
+        : input.kind === "point"
+          ? `click a spot on ${input.label}`
+          : `click ${input.label}`;
 }
 
 /** The label an input shows in the timeline. */

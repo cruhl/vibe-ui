@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { record } from "../run-log/index.ts";
+import { getRunID, record } from "../run-log/index.ts";
 
 interface TurnstileOptions {
   sitekey: string;
@@ -43,7 +43,7 @@ function finish(passed: boolean): void {
 async function redeem(token: string): Promise<void> {
   const response = await fetch("/api/pass", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Vibe-Session": getRunID() },
     body: JSON.stringify({ token }),
   }).catch(() => null);
   const issued = Issued.safeParse(response?.ok === true ? await response.json() : null);
@@ -134,14 +134,18 @@ export function setPassKey(key: string | null): void {
 /**
  * `fetch` for this site's hosted routes: waits for a fresh pass first, and when the Worker still
  * answers that one is required (expired, or the visitor's network changed), earns a new pass and
- * sends the request once more.
+ * sends the request once more. Every request carries the run id as `X-Vibe-Session`, so the
+ * Worker's log lines join this session's run log.
  */
 export async function hostedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : {}));
+  headers.set("X-Vibe-Session", getRunID());
+  const tagged = { ...init, headers };
   await ensurePass();
-  const response = await window.fetch(input, init);
+  const response = await window.fetch(input, tagged);
   if (response.status !== 403 || response.headers.get("X-Pass") !== "required") return response;
   await response.body?.cancel();
   expiresAt = 0;
   await ensurePass();
-  return window.fetch(input, init);
+  return window.fetch(input, tagged);
 }

@@ -5,7 +5,7 @@ import compactPrompt from "./compact.md?raw";
 import type { Compactor } from "./memory.ts";
 
 /** The most words the story so far may have. */
-const storyWords = 140;
+const storyWords = 200;
 const compactMs = 20_000;
 
 /**

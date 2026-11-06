@@ -14,7 +14,10 @@ interface Props {
   presenceThreshold?: number;
   onClick: (element: ViewElement) => void;
   onType: (element: ViewElement, text: string) => void;
-  /** A click as a point, fractions of the frame; when given, the controller resolves the element. */
+  /**
+   * A click as a point, fractions of the frame; when given, the controller resolves the element,
+   * and a click on no box comes here too, for the controller to read what is there.
+   */
   onPoint?: (x: number, y: number) => void;
   /** A press landed on an element's box, at `clickT` session seconds, before any click resolves. */
   onPress: (press: { elementID: string; box: Box; clickT: number }) => void;
@@ -58,7 +61,8 @@ const hasArea = (found: ElementBox) =>
 
 /**
  * The click layer over the video. Every press is resolved by its point against the live boxes,
- * smallest box first, in one handler, and logged with its point and outcome. A pressed element
+ * smallest box first, in one handler, and logged with its point and outcome; a press on no box
+ * goes to the controller as a point, which reads what is there. A pressed element
  * reacts on the video at once; while the last input is still being answered a press nudges the
  * busy state and still goes to the controller, which keeps the last one and replays it when the
  * lock lifts, and hover and pointer cues are off, so the lock shows. Each element still has its
@@ -144,6 +148,7 @@ export function Overlay({
         if (found === null || element === undefined) {
           record("pointer", { ...point, elementID: null, outcome: "no_box" });
           addRipple(point);
+          if (onPoint !== undefined) setPressed(point);
           return;
         }
         if (element.kind !== "input") {
@@ -175,6 +180,11 @@ export function Overlay({
         if (point === null) return;
         const found = boxAt(live, point);
         const element = found === null ? undefined : byID.get(found.elementID);
+        if (found === null && onPoint !== undefined) {
+          if (!locked) record("pointer", { ...point, elementID: null, outcome: "point" });
+          onPoint(point.x, point.y);
+          return;
+        }
         if (found === null || element === undefined || element.kind === "input") return;
         if (!locked) record("pointer", { ...point, elementID: element.id, outcome: "accepted" });
         if (onPoint === undefined) onClick(element);

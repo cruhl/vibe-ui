@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { phaseNames } from "../liveness/index.ts";
 import { inputTimelines, type InputTimeline } from "./timeline.ts";
-import { getEvents, type RunEvent } from "../run-log/index.ts";
+import { failureKinds, getEvents, getRunID, type RunEvent } from "../run-log/index.ts";
 
 interface DebugInput {
   inputID: string;
@@ -46,27 +46,6 @@ interface DebugState {
   inputs: readonly DebugInput[];
   guesses: readonly DebugGuess[];
 }
-
-const failureKinds = new Set([
-  "deadline_missed",
-  "clip_failed",
-  "enqueue_failed",
-  "enqueue_refused",
-  "boxes_failed",
-  "agent_aborted",
-  "speculate_failed",
-  "slot_failed",
-  "upload_failed",
-  "play_command_failed",
-  "move_failed",
-  "pop_failed",
-  "command_error",
-  "omni_error",
-  "black_frame",
-  "stall",
-  "retry",
-  "candidates_cut",
-]);
 
 const clipStages = ["clip_queued", "clip_generated", "clip_started", "cut"] as const;
 
@@ -191,6 +170,9 @@ const DebugBody = memo(function DebugBody({ state }: { state: DebugState; count:
   return (
     <aside className="debug-panel" data-testid="debug-panel">
       <Section title="session">
+        <div className="debug-session-id" data-testid="debug-session-id">
+          id {getRunID()}
+        </div>
         <div>
           {state.sessionStatus} / {state.phase} / {state.busy ? "working" : "idle"} / boxes{" "}
           {state.boxes.length} {state.boxesSource ?? "none"} / black frames {state.blackFrames}

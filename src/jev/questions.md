@@ -1,6 +1,6 @@
 # Jev questions
 
-Each line is `key: text`. Jev reads the frame as `frame` and the person's recent inputs as `recent`. Code fills `{look}` with a thing's look sentence and `{label}` with its printed label. The `degradation-` lines are the score's levels, crisp to badly degraded.
+Each line is `key: text`. Jev reads the frame as `frame` and the person's recent inputs as `recent`. Code fills `{look}` with a thing's look sentence and `{label}` with its printed label. The `degradation-` lines are the score's levels, crisp to badly degraded. The `point` question reads the whole frame as `frame` and a crop of it around the spot the person chose as `crop`; code fills `{look}` and `{state}` with each thing in view.
 
 box: In `frame`: {look}
 present: Is this in `frame`: {look}
@@ -11,3 +11,7 @@ degradation-0: A crisp clean picture: sharp edges, solid colors, every word legi
 degradation-1: Slightly soft or smeared in a few places, words still legible.
 degradation-2: Clearly smeared, warped or noisy, some words hard to read.
 degradation-3: Badly degraded: melted shapes, broken outlines, words unreadable.
+point: `crop` is cut from `frame` around the spot the person chose. Which of these is at the very center of `crop`?
+point-thing: {look}
+point-thing-now: {look}, {state}
+point-open: Open background or empty space, with no particular thing at the center

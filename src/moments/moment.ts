@@ -1,12 +1,22 @@
 import type { ElementBox } from "../jev/index.ts";
 import type { Op, ViewElement, View, World } from "../state/index.ts";
 
-/** An input reduced to what a moment answers: which element, how, and for typing the text. */
+/**
+ * An input reduced to what a moment answers: which element, how, and for typing the text. A
+ * follow-up (`next`, no element) is what happens next on its own once its parent's clip ends; it
+ * answers no input, so a click never matches it.
+ */
 export interface MomentInput {
   elementID: string;
-  action: "click" | "type";
+  action: "click" | "type" | "next";
   text: string | null;
 }
+
+/** The input of a follow-up moment. */
+export const nextInput: MomentInput = { elementID: "", action: "next", text: null };
+
+/** Whether a moment is a follow-up of its parent rather than the answer to an input. */
+export const isFollow = (moment: Moment) => moment.input?.action === "next";
 
 /**
  * Where a moment is: its lines exist (`written`), its clip is queued or building (`filming`), the
@@ -54,7 +64,6 @@ export interface Moment {
   /** The memory entries the input and the response append. */
   memory: { input: string; response: string };
   prompt: string;
-  pictureLabels: string[];
   status: MomentStatus;
   start: StartMode | null;
   clipID: string | null;

@@ -5,7 +5,7 @@ the indicator art and sounds in `busy/` are painted and recorded from the prompt
 
 ```json
 {
-  "pitch": "A cozy Windows XP desktop from 2003, until a friend on Messenger sends FREE SMILEYS.",
+  "pitch": "Windows XP, 2003. Dive into any program, until a friend sends Free Smileys.",
   "acknowledge": "press",
   "font": "Tahoma, Verdana, 'Segoe UI', sans-serif",
   "colors": {

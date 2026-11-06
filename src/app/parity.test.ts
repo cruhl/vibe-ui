@@ -96,7 +96,6 @@ describe("a bake is the live engine recorded", () => {
         likelihood: null,
         memory: { input: "start", response: "" },
         prompt: "p",
-        pictureLabels: [],
       },
       null,
     );

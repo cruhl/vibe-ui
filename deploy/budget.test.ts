@@ -6,6 +6,7 @@ import {
   busyCopy,
   estimateTokens,
   meteredAnswer,
+  usageOf,
   type Ceilings,
   type Metered,
 } from "./budget.ts";
@@ -119,13 +120,13 @@ describe("blockOf", () => {
 });
 
 describe("estimateTokens", () => {
-  test("counts an inline image at a fixed cost and every other character as a token", () => {
+  test("counts an inline image at a fixed cost and the rest at a token per three characters", () => {
     const text = JSON.stringify({
       input: "hello",
       image_url: `data:image/png;base64,${"A".repeat(9_000)}`,
     });
     const image = `data:image/png;base64,${"A".repeat(9_000)}`;
-    expect(estimateTokens(text, 10)).toBe(1_500 + text.length - image.length + 10);
+    expect(estimateTokens(text)).toBe(1_500 + Math.ceil((text.length - image.length) / 3));
   });
 });
 
@@ -134,31 +135,50 @@ const stream = (text: string) =>
     new ReadableStream<Uint8Array>({
       start(controller) {
         const bytes = new TextEncoder().encode(text);
-        controller.enqueue(bytes.slice(0, 17));
-        controller.enqueue(bytes.slice(17));
+        for (let at = 0; at < bytes.length; at += 7) controller.enqueue(bytes.slice(at, at + 7));
         controller.close();
       },
     }),
     { headers: { "Content-Type": "text/event-stream" } },
   );
 
+describe("usageOf", () => {
+  test("reads the last real usage keys and never an escaped or longer key", () => {
+    expect(usageOf('"max_output_tokens":640,"text":"\\"input_tokens\\":5"')).toBeNull();
+    expect(
+      usageOf(
+        '"usage":{"input_tokens":1,"output_tokens":2}},{"usage":{"input_tokens":7,"output_tokens":3}}',
+      ),
+    ).toBe(10);
+  });
+});
+
 describe("meteredAnswer", () => {
   test("passes the stream through and charges the usage it reports", async () => {
     vi.useRealTimers();
     const { budget, run } = meter();
     const environment = environmentOf(budget);
+    const echoed = `${"a long system prompt ".repeat(2_000)}write \\"output_tokens\\":999`;
     const events = [
+      `event: response.created\ndata: {"type":"response.created","response":{"instructions":"${echoed}","max_output_tokens":640,"usage":null}}\n\n`,
       'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"hi"}\n\n',
-      'event: response.completed\ndata: {"type":"response.completed","response":{"usage":{"input_tokens":120,"output_tokens":30}}}\n\n',
+      `event: response.completed\ndata: {"type":"response.completed","response":{"instructions":"${echoed}","max_output_tokens":640,"usage":{"input_tokens":120,"input_tokens_details":{"cached_tokens":64},"output_tokens":30,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":150},"user":null,"metadata":{}}}\n\n`,
     ].join("");
     const request = new Request("https://vibe-ui.test/api/openai/v1/responses", {
       method: "POST",
       headers: { "CF-Connecting-IP": "203.0.113.9" },
     });
     const waits: Promise<unknown>[] = [];
-    const answer = meteredAnswer(environment, request, "{}", stream(events), {
-      waitUntil: (promise) => waits.push(promise),
-    });
+    const answer = meteredAnswer(
+      environment,
+      request,
+      "{}",
+      stream(events),
+      {
+        waitUntil: (promise) => waits.push(promise),
+      },
+      () => undefined,
+    );
     expect(await answer.text()).toBe(events);
     await Promise.all(waits);
     expect(await run({ kind: "report" })).toMatchObject({ openAITokens: 150, topBlocks: [150] });
@@ -167,13 +187,26 @@ describe("meteredAnswer", () => {
   test("charges the conservative estimate when the answer carries no usage", async () => {
     const { budget, run } = meter();
     const environment = environmentOf(budget);
-    const events = 'data: {"type":"response.output_text.delta","delta":"abcdef"}\n\n';
+    const events = [
+      `event: response.created\ndata: {"type":"response.created","response":{"max_output_tokens":640,"usage":null}}\n\n`,
+      'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"abc"}\n\n',
+      'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"def"}\n\n',
+    ].join("");
     const request = new Request("https://vibe-ui.test/", { method: "POST" });
-    const answer = meteredAnswer(environment, request, "x".repeat(40), stream(events), {
-      waitUntil: () => undefined,
-    });
-    await answer.text();
-    expect(await run({ kind: "report" })).toMatchObject({ openAITokens: 46 });
+    const waits: Promise<unknown>[] = [];
+    const answer = meteredAnswer(
+      environment,
+      request,
+      "x".repeat(40),
+      stream(events),
+      {
+        waitUntil: (promise) => waits.push(promise),
+      },
+      () => undefined,
+    );
+    expect(await answer.text()).toBe(events);
+    await Promise.all(waits);
+    expect(await run({ kind: "report" })).toMatchObject({ openAITokens: 14 });
   });
 });
 

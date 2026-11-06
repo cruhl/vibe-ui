@@ -18,7 +18,6 @@ export type MomentFields = Pick<
   | "likelihood"
   | "memory"
   | "prompt"
-  | "pictureLabels"
 >;
 
 /**
@@ -70,7 +69,6 @@ export function momentRecord(moment: Moment, clipBytes: number | null): BakedMom
     memory: moment.memory,
     stateHash: hashWorld(moment.world),
     prompt: moment.prompt,
-    pictureLabels: moment.pictureLabels,
     start: moment.start,
     status: ready ? "ready" : "written",
     boxes: ready ? moment.boxes : null,

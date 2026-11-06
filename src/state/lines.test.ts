@@ -95,6 +95,8 @@ describe("parseLine", () => {
     expect(op("%toy hello there")).toEqual({ op: "say", id: "toy", text: "hello there" });
     expect(op("? box 0.7")).toEqual({ op: "guess", elementID: "box", likelihood: 0.7 });
     expect(op("? box")).toEqual({ op: "guess", elementID: "box", likelihood: null });
+    expect(op("&")).toEqual({ op: "follow" });
+    expect(parseLine("& more").ok).toBe(false);
   });
 
   test("reads a full add, and leaves unwritten parts of a bare one to the registry", () => {
@@ -208,6 +210,37 @@ describe("applyOp", () => {
     expect(rejection(world, "~box | COUNT $count")).toBeNull();
     expect(rejection(world, "~box | Recycle Bin")).toBeNull();
     expect(rejection(world, "~box | 25 cents")).toBeNull();
+  });
+
+  test("clearing the view removes every thing, and each comes back by its id", () => {
+    const cleared = apply(world, "+lamp world right | a brass lamp", "-*");
+    expect(cleared.entities).toEqual({});
+    expect(cleared.order).toEqual([]);
+    expect(Object.keys(cleared.registry).sort()).toEqual(["box", "lamp", "toy"]);
+    expect(apply(cleared, "+box", "+toy").entities.toy).toEqual(world.entities.toy);
+  });
+
+  test("a restated approach, arrival or leaving keeps its slots, and nothing else takes one", () => {
+    const remade = apply(
+      world,
+      "#approach {thing} glows sea green",
+      "#arrive {thing} rises {place} in a cloud of bubbles",
+      "#select a sonar ping",
+      "#lettering stenciled brass capitals",
+    );
+    expect(remade.canon).toMatchObject({
+      approach: "{thing} glows sea green",
+      arrive: "{thing} rises {place} in a cloud of bubbles",
+      selectSound: "a sonar ping",
+      lettering: "stenciled brass capitals",
+    });
+    expect(rejection(world, "#approach the camera leans in")).toBe(
+      "#approach must name the thing as {thing}",
+    );
+    expect(rejection(world, "#leave {thing} sinks {place}")).toBe("#leave has no {place} slot");
+    expect(rejection(world, "#settle {thing} rests")).toBe(
+      "#settle takes no {slot}, only plain words",
+    );
   });
 
   test("only a thing with a voice speaks, and a named beat becomes a gag", () => {

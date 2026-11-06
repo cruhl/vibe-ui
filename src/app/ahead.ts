@@ -1,14 +1,15 @@
 import type { AgentInput, LinesRequest, LinesTurn } from "../agent/index.ts";
-import type { AssetLibrary } from "../assets/index.ts";
 import { cleanBoxes, momentChecks } from "../boxes/index.ts";
 import { captureFile } from "../capture/index.ts";
 import { getJevConnection, type Keys } from "../keys/index.ts";
 import type { Memory } from "../memory/index.ts";
 import {
   byLikelihood,
+  isFollow,
   momentKey,
   MomentTree,
   newMoment,
+  nextInput,
   reserveSession,
   schedule,
   type Moment,
@@ -20,9 +21,9 @@ import {
 import { frameOfStill, heldStill, seamFromStill } from "../frame/index.ts";
 import { boxElements, jevDeadline, type BoxResult, type ElementBox } from "../jev/index.ts";
 import type { SessionPool, Slot } from "../pool/index.ts";
-import { chooseReferences, describeChange, projectEntity, viewOf } from "../projector/index.ts";
+import { describeChange, projectEntity, viewOf } from "../projector/index.ts";
 import { DeadlineError, now, record, withDeadline } from "../run-log/index.ts";
-import type { Op, View, World } from "../state/index.ts";
+import type { Draft, View, World } from "../state/index.ts";
 import { inputMemory, readGuesses, type GuessBlock, type GuessTaker } from "../turn/index.ts";
 import { clipLength, sendClip, type ClipRecord, type Clips } from "./clips.ts";
 import { guessQuestion, logJev } from "./jev-log.ts";
@@ -57,7 +58,6 @@ export interface AheadHost {
   readonly keeper: MomentKeeper;
   readonly players: LocalPlayers;
   readonly memory: Memory;
-  readonly assets: AssetLibrary;
   keys: () => Keys | null;
   /** Running, not paused, and the stage consistent with the world: new work may start. */
   open: () => boolean;
@@ -98,6 +98,8 @@ export class Ahead {
   private readonly boxing = new Map<Moment, Promise<void>>();
   /** Each captured moment's seam against its parent's held frame. */
   private readonly seams = new WeakMap<Moment, number | null>();
+  /** Moments whose capture already failed once and was tried again. */
+  private readonly recaptured = new WeakSet<Moment>();
   /** How many of a moment's guesses Jev last ranked, so a ranking is asked again only for more. */
   private readonly ranked = new WeakMap<Moment, number>();
   /** How many of the root's guesses the stage's own boxing last ranked. */
@@ -125,15 +127,37 @@ export class Ahead {
   /** The root's guesses still worth ranking: every child not rejected. */
   openGuesses(): Moment[] {
     const root = this.tree.root;
-    return root === null
-      ? []
-      : this.tree.children(root).filter((child) => child.status !== "rejected");
+    return root === null ? [] : this.guessesOf(root).filter((child) => child.status !== "rejected");
+  }
+
+  /** A moment's guesses at the next input: its children but its follow-up. */
+  guessesOf(moment: Moment): Moment[] {
+    return this.tree.children(moment).filter((child) => !isFollow(child));
+  }
+
+  /** The follow-up chained after a moment's clip, or null. */
+  followOf(moment: Moment): Moment | null {
+    return this.tree.children(moment).find(isFollow) ?? null;
+  }
+
+  /**
+   * The input a moment's own guess turn says was made: the click on the head of its chain, or the
+   * input the stage answers when that head is on stage or already left the tree.
+   */
+  private inputOf(moment: Moment): AgentInput {
+    let head: Moment | null = moment;
+    while (head !== null && isFollow(head))
+      head = head.parentKey === null ? null : this.tree.get(head.parentKey);
+    const input = head?.input ?? null;
+    return head === null || head === this.tree.root || input === null
+      ? this.host.lastInput()
+      : { kind: "click", elementID: input.elementID, label: head.label };
   }
 
   publish(): void {
     const root = this.tree.root;
     this.host.setGuesses(
-      (root === null ? [] : this.tree.children(root)).flatMap((child) =>
+      (root === null ? [] : this.guessesOf(root)).flatMap((child) =>
         child.input === null
           ? []
           : [
@@ -260,9 +284,16 @@ export class Ahead {
     this.writes.set(moment, abort);
   }
 
+  /** The moment a guess turn under `abort` writes for now, its writing moved down any chain. */
+  private writingUnder(abort: AbortController): Moment | null {
+    for (const [moment, writing] of this.writes) if (writing === abort) return moment;
+    return null;
+  }
+
   /** A moment's guess turn under `abort` ended: its guesses are in, ranked and scheduled. */
-  finishWriting(moment: Moment, abort: AbortController): void {
-    if (this.writes.get(moment) !== abort) return;
+  finishWriting(abort: AbortController): void {
+    const moment = this.writingUnder(abort);
+    if (moment === null) return;
     this.writes.delete(moment);
     moment.children = "written";
     this.rankLater(moment);
@@ -270,8 +301,9 @@ export class Ahead {
   }
 
   /** A moment's guess turn under `abort` was given up before any guess. */
-  abandonWriting(moment: Moment, abort: AbortController): void {
-    if (this.writes.get(moment) !== abort) return;
+  abandonWriting(abort: AbortController): void {
+    const moment = this.writingUnder(abort);
+    if (moment === null) return;
     this.writes.delete(moment);
     moment.children = "none";
   }
@@ -306,12 +338,13 @@ export class Ahead {
     const nodes: NodeView[] = [];
     const sources: SourceView[] = [];
     for (const moment of this.tree.all()) {
-      const depth = this.tree.depth(moment);
+      const depth = this.tree.steps(moment);
       if (depth === null) continue;
       nodes.push({
         key: moment.key,
         parentKey: moment.parentKey,
         depth,
+        follow: isFollow(moment),
         probability: this.tree.pathProbability(moment),
         index: moment.index,
         status: moment.status,
@@ -334,17 +367,14 @@ export class Ahead {
       const moment = this.tree.get(key);
       if (moment === null) continue;
       if (moment !== root && this.writes.size >= writesInFlight) break;
-      const input = moment.input;
-      this.writeGuesses(
-        moment,
-        moment === root || input === null
-          ? this.host.lastInput()
-          : { kind: "click", elementID: input.elementID, label: moment.label },
-        moment.key,
-        this.ask(moment),
-      );
+      this.writeGuesses(moment, this.inputOf(moment), moment.key, this.ask(moment));
     }
-    if (knobs.wide && root.children === "written" && !this.toppedUp.has(root)) {
+    if (
+      knobs.wide &&
+      root.children === "written" &&
+      this.followOf(root) === null &&
+      !this.toppedUp.has(root)
+    ) {
       this.toppedUp.add(root);
       const ask = this.ask(root);
       if (ask.count > 0) {
@@ -356,28 +386,32 @@ export class Ahead {
       const moment = this.tree.get(order.key);
       const parent = moment?.parentKey == null ? null : this.tree.get(moment.parentKey);
       if (moment === null || parent === null) continue;
+      const position = isFollow(moment) && this.tree.steps(moment) === 0 ? { position: 0 } : {};
       if (order.start === "latent")
         void this.film(moment, order.slot, "latent", {
           continueFrom: parent.clipID,
           fallback: parent.held,
+          ...position,
         });
-      else void this.film(moment, order.slot, "pinned", { pinned: parent.held });
+      else void this.film(moment, order.slot, "pinned", { pinned: parent.held, ...position });
     }
     this.warmLikeliest();
   }
 
-  /** Keeps the likeliest captured guess of the moment on stage warmed in the player off stage. */
+  /**
+   * Keeps the follow-up of the moment on stage warmed in the player off stage once it is captured,
+   * else its likeliest captured guess.
+   */
   warmLikeliest(): void {
     const root = this.tree.root;
     if (root === null) return;
+    const follow = this.followOf(root);
     this.host.players.warm(
       byLikelihood(
-        this.tree
-          .children(root)
-          .filter(
-            (child) =>
-              child.clipURL !== null && (child.status === "ready" || child.status === "captured"),
-          ),
+        (follow === null ? this.tree.children(root) : [follow]).filter(
+          (child) =>
+            child.clipURL !== null && (child.status === "ready" || child.status === "captured"),
+        ),
       )[0],
     );
   }
@@ -412,6 +446,7 @@ export class Ahead {
     const host = this.host;
     const slot = host.pool.slot(slotIndex);
     if (slot === undefined) return;
+    this.unfilmFollows(moment, "refilm");
     moment.status = "filming";
     moment.slot = slotIndex;
     moment.start = start;
@@ -481,7 +516,7 @@ export class Ahead {
     this.writes.get(moment)?.abort();
     this.startWriting(moment, local);
     if (ask.count === 0) {
-      this.finishWriting(moment, local);
+      this.finishWriting(local);
       return;
     }
     const request = this.host.linesRequest(
@@ -490,14 +525,14 @@ export class Ahead {
       local.signal,
     );
     if (request === null) return;
-    const guesses = this.guessesFor(moment, ask.count);
+    const guesses = this.guessesFor(moment, ask.count, false, local.signal);
     this.host
       .agentLines(request, (line) => {
         if (!local.signal.aborted && !guesses.take(line)) local.abort();
       })
       .then(() => {
         guesses.end();
-        this.finishWriting(moment, local);
+        this.finishWriting(local);
       })
       .catch((error: unknown) => {
         guesses.end();
@@ -514,7 +549,7 @@ export class Ahead {
           this.writeGuesses(moment, input, inputID, ask, true);
           return;
         }
-        this.finishWriting(moment, local);
+        this.finishWriting(local);
       })
       .finally(() => {
         moment.abort.signal.removeEventListener("abort", onAbort);
@@ -556,21 +591,103 @@ export class Ahead {
     return { picks, count: Math.min(wanted, picks.length) };
   }
 
-  /** Reads streamed guesses for a moment, each finished guess becoming its child. */
-  guessesFor(parent: Moment, limit = this.host.knobs.guesses): GuessTaker {
+  /**
+   * Reads streamed guesses for a moment, each finished guess becoming its child. With `chained`,
+   * follow-ups written before the guesses chain after the moment first, each the child of the one
+   * before, its turn's writing moving down to the newest, and the guesses go under the last. Once
+   * `signal` aborts, nothing more is added, not even the guess its stream was cut off in.
+   */
+  guessesFor(
+    parent: Moment,
+    limit = this.host.knobs.guesses,
+    chained = false,
+    signal: AbortSignal | null = null,
+  ): GuessTaker {
+    let end: Moment | null = parent;
     return readGuesses({
       world: parent.world,
       limit,
       roundID: parent.key,
-      alive: () => this.tree.holds(parent),
+      alive: () => signal?.aborted !== true && end !== null && this.tree.holds(end),
       onGuess: (block) => {
-        this.addGuess(parent, block);
+        if (end !== null) this.addGuess(end, block);
       },
+      ...(chained
+        ? {
+            onFollow: (draft: Draft, continues: boolean) => {
+              end = end === null ? null : this.addFollow(end, draft, continues);
+            },
+          }
+        : {}),
     });
   }
 
+  /**
+   * Chains a follow-up after a moment: what happens next on its own once the moment's clip ends,
+   * filmed as a continuation of it. Its clip keeps moving into the next one when `continues`. A
+   * guess turn still writing for the moment moves down to it. Returns it, or null when it was not
+   * added.
+   */
+  private addFollow(parent: Moment, draft: Draft, continues: boolean): Moment | null {
+    try {
+      const follow = this.moment({
+        key: momentKey(parent.key, nextInput, draft.lines),
+        parentKey: parent.key,
+        input: nextInput,
+        index: 0,
+        label: parent.label,
+        lines: draft.lines,
+        ops: draft.ops,
+        world: draft.world,
+        state: viewOf(draft.world),
+        beat: describeChange(parent.world, draft.world, draft.ops),
+        likelihood: 1,
+        memory: { input: "", response: draft.lines.join("; ") },
+        prompt: projectEntity(draft.world, null, parent.world, draft.ops, !continues).prompt,
+      });
+      if (!this.tree.add(follow)) return null;
+      const writing = this.writes.get(parent);
+      parent.children = "written";
+      if (writing !== undefined) {
+        this.writes.delete(parent);
+        this.startWriting(follow, writing);
+      }
+      record("follow_added", {
+        roundID: parent.key,
+        key: follow.key,
+        continues,
+        lines: draft.lines.length,
+      });
+      this.pump();
+      return follow;
+    } catch (error: unknown) {
+      record("follow_rejected", { roundID: parent.key, guess: null, errors: [String(error)] });
+      return null;
+    }
+  }
+
+  /**
+   * Sends a moment's follow-ups filmed from its earlier clip back to written, popping what is
+   * still queued, so they are filmed again from its new one.
+   */
+  private unfilmFollows(moment: Moment, reason: string): void {
+    for (let follow = this.followOf(moment); follow !== null; follow = this.followOf(follow)) {
+      if (follow.status === "written") continue;
+      if (follow.clipID !== null) this.popClip(follow.clipID, follow, reason);
+      follow.status = "written";
+      follow.clipID = null;
+      follow.clipURL = null;
+      follow.clip = null;
+      follow.held = null;
+      follow.boxes = null;
+      follow.checks = null;
+      follow.slot = null;
+      follow.start = null;
+    }
+  }
+
   private addGuess(parent: Moment, block: GuessBlock): void {
-    const { draft, guess } = block;
+    const { draft, guess, follows } = block;
     const start = parent.world;
     const element = parent.state.elements.find((item) => item.id === guess.elementID);
     if (element === undefined) {
@@ -579,7 +696,6 @@ export class Ahead {
     }
     try {
       const input: AgentInput = { kind: "click", elementID: element.id, label: element.label };
-      const projected = this.project(start, draft.world, input, draft.ops);
       const child = this.moment({
         key: momentKey(parent.key, guess, draft.lines),
         parentKey: parent.key,
@@ -596,10 +712,15 @@ export class Ahead {
           input: inputMemory(input),
           response: `played the guessed clip for ${element.label}`,
         },
-        prompt: projected.prompt,
-        pictureLabels: projected.pictureLabels,
+        prompt: projectEntity(draft.world, input, start, draft.ops, follows.length === 0).prompt,
       });
       if (!this.tree.add(child)) return;
+      let end = child;
+      for (const [index, follow] of follows.entries()) {
+        const added = this.addFollow(end, follow, index < follows.length - 1);
+        if (added === null) break;
+        end = added;
+      }
       record("speculation_added", {
         roundID: parent.key,
         key: child.key,
@@ -617,24 +738,6 @@ export class Ahead {
         errors: [String(error)],
       });
     }
-  }
-
-  /**
-   * Projects one transition: picks which returning things are shown by their stored pictures,
-   * then projects the prompt with their picture labels in place of their looks.
-   */
-  project(
-    before: World,
-    after: World,
-    input: AgentInput,
-    ops: readonly Op[],
-  ): { prompt: string; pictureLabels: string[] } {
-    const references = chooseReferences(before, after, ops, (id) => this.host.assets.has(id));
-    if (references.length > 0) record("references_chosen", { references });
-    return {
-      prompt: projectEntity(after, input, before, ops, references).prompt,
-      pictureLabels: references,
-    };
   }
 
   /**
@@ -692,7 +795,8 @@ export class Ahead {
   /**
    * Captures a built moment before anyone sees it: its step result gives the clip and its true
    * last frame, the held frame goes to every ready session at once so a pinned child never waits
-   * on an upload, and Jev boxes and checks it. Runs for every built moment in the tree.
+   * on an upload, and Jev boxes and checks it. Runs for every built moment in the tree. A capture
+   * that fails is tried once more, then rejects the moment and refilms it, so it never stays built.
    */
   capture(moment: Moment, slot: Slot, clipID: string, step: number): void {
     const read = slot.client.stepResult;
@@ -743,6 +847,15 @@ export class Ahead {
         .catch((error: unknown) => {
           if (moment.abort.signal.aborted) return;
           record("capture_failed", { key: moment.key, clipID, step, message: String(error) });
+          if (!this.tree.holds(moment) || moment.clipID !== clipID) return;
+          if (!this.recaptured.has(moment)) {
+            this.recaptured.add(moment);
+            this.capture(moment, slot, clipID, step);
+            return;
+          }
+          moment.status = "rejected";
+          this.refilm(moment);
+          this.publish();
         }),
     );
   }
@@ -757,7 +870,7 @@ export class Ahead {
     const held = moment.held;
     if (keys === null || held === null) return;
     const frame = await frameOfStill(held);
-    const children = this.tree.children(moment).filter((child) => child.status !== "rejected");
+    const children = this.guessesOf(moment).filter((child) => child.status !== "rejected");
     const rank = children.length >= 2 && this.ranked.get(moment) !== children.length;
     const guesses = rank ? children.map(guessQuestion) : [];
     const elements = [...moment.state.elements, ...moment.removed];
@@ -829,7 +942,7 @@ export class Ahead {
    */
   private rankLater(moment: Moment): void {
     if (moment.held === null || moment.boxes === null || this.boxing.has(moment)) return;
-    const children = this.tree.children(moment).filter((child) => child.status !== "rejected");
+    const children = this.guessesOf(moment).filter((child) => child.status !== "rejected");
     if (children.length < 2 || this.ranked.get(moment) === children.length) return;
     this.track(moment, () => this.boxMoment(moment));
   }
@@ -845,7 +958,7 @@ export class Ahead {
     const clipID = moment.clipID;
     const clip = clipID === null ? undefined : this.host.clips.get(clipID);
     if (moment === this.tree.root && clipID !== null && clip !== undefined) {
-      if (clip.played) this.host.refilmStage(clipID, clip);
+      if (clip.played && this.followOf(moment) === null) this.host.refilmStage(clipID, clip);
       return;
     }
     const parent = moment.parentKey === null ? null : this.tree.get(moment.parentKey);

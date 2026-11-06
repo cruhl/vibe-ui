@@ -118,6 +118,7 @@ async function hostedAgent(
   const body = await readJSON(request, agentMaxBytes, agentBody(models));
   if ("failed" in body) return body.failed;
   if (!(await admit(environment, request, "openai", 0))) return busy();
+  const abort = new AbortController();
   const upstream = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -125,12 +126,14 @@ async function hostedAgent(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ max_output_tokens: maxOutputTokens, ...body.value, store: false }),
-    signal: request.signal,
+    signal: abort.signal,
   }).catch(() => null);
   if (upstream === null) return reply(502, "The agent service could not be reached");
   if (!upstream.ok) return scrubbedFailure(upstream, [environment.OPENAI_API_KEY ?? ""]);
   const requestText = new TextDecoder().decode(body.bytes);
-  return meteredAnswer(environment, request, requestText, upstream, background);
+  return meteredAnswer(environment, request, requestText, upstream, background, () => {
+    abort.abort();
+  });
 }
 
 const FalBody = z.looseObject({

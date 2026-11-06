@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "zustand";
 import { record } from "../run-log/index.ts";
 import { shareScenario, writeStore } from "../scenario/index.ts";
 import { keysURL } from "../route/index.ts";
+import { Icon } from "./icon.tsx";
 
 const exampleIdeas = [
   "a lighthouse keeper's last night before the storm",
@@ -57,36 +58,32 @@ export const shareLabels: Record<ShareState, string> = {
 };
 
 /**
- * The front of the create flow: one line for an idea, a few to start from, and the writer's
- * error when the last try failed. Submitting hands the idea to `onWrite`; the progress takes over
- * from there.
+ * The front of the create flow, drawn as a blank screen waiting for a world: the idea is written
+ * on it like a title card (Enter makes it), with a few ideas to start from and the writer's error
+ * under the button when the last try failed. Submitting hands the idea to `onWrite`; the progress
+ * takes over from there.
  */
 export function CreateForm({
   onWrite,
   focus,
-  actions,
 }: {
   onWrite: (idea: string) => void;
   focus: boolean;
-  /** Buttons that sit at the end of the title row. */
-  actions: ReactNode;
 }) {
   const [idea, setIdea] = useState("");
   const write = useStore(writeStore);
   const writing = write.stage !== null && write.launchedID === null;
-  const input = useRef<HTMLInputElement | null>(null);
+  const input = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
     if (focus) input.current?.focus();
   }, [focus]);
   const error = write.error === null || writing ? null : readableError(write.error);
   return (
-    <section className="create" aria-labelledby="create-title">
-      <div className="create-head">
-        <h1 id="create-title" className="create-title">
-          Make your own world
-        </h1>
-        {actions}
-      </div>
+    <section className="create" aria-labelledby="create-title" data-writing={writing}>
+      <span className="create-static" aria-hidden="true" />
+      <h2 id="create-title" className="create-title">
+        Make your own world
+      </h2>
       <p className="create-lede">Describe a world in one line, then play it and share it.</p>
       <form
         className="create-form"
@@ -96,19 +93,25 @@ export function CreateForm({
           if (idea.trim() !== "") onWrite(idea);
         }}
       >
-        <input
+        <textarea
           ref={input}
           className="create-idea"
           data-testid="scenario-idea"
-          type="text"
+          rows={2}
           value={writing ? (write.idea ?? idea) : idea}
           disabled={writing}
           maxLength={280}
           placeholder="A house that moves at night"
           aria-label="Your world idea"
           enterKeyHint="go"
+          spellCheck={false}
           onChange={(event) => {
-            setIdea(event.target.value);
+            setIdea(event.target.value.replace(/\n/g, " "));
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+            event.preventDefault();
+            event.currentTarget.form?.requestSubmit();
           }}
         />
         <button
@@ -116,32 +119,35 @@ export function CreateForm({
           className="button-primary create-make"
           disabled={writing || idea.trim() === ""}
         >
-          {writing ? <span className="spinner" aria-hidden="true" /> : null}
+          {writing ? <span className="spinner" aria-hidden="true" /> : <Icon name="make" />}
           {writing ? "Writing" : "Make it"}
         </button>
+        {error === null ? null : (
+          <p className="create-error" data-testid="scenario-error" role="alert">
+            {error.text} {error.keys ? <a href={keysURL()}>Set up your keys</a> : null}
+          </p>
+        )}
       </form>
-      {error === null ? (
-        <div className="create-ideas" role="group" aria-label="Ideas to start from">
-          {exampleIdeas.map((example) => (
-            <button
-              key={example}
-              type="button"
-              className="create-example"
-              disabled={writing}
-              onClick={() => {
-                setIdea(example);
-                input.current?.focus();
-              }}
-            >
-              {example}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className="create-error" data-testid="scenario-error" role="alert">
-          {error.text} {error.keys ? <a href={keysURL()}>Set up your keys</a> : null}
-        </p>
-      )}
+      <div className="create-ideas" role="group" aria-labelledby="create-ideas-label">
+        <span id="create-ideas-label" className="create-ideas-label">
+          Or start from
+        </span>
+        {exampleIdeas.map((example) => (
+          <button
+            key={example}
+            type="button"
+            className="create-example"
+            disabled={writing}
+            onClick={() => {
+              setIdea(example);
+              input.current?.focus();
+            }}
+          >
+            <span>{example}</span>
+            <Icon name="send" />
+          </button>
+        ))}
+      </div>
     </section>
   );
 }
@@ -236,7 +242,9 @@ export function CreateProgress({ scenarioID, framed, failed }: ProgressProps) {
         <p className="create-progress-count">
           {launched
             ? "First scene coming up."
-            : `${write.characters.toLocaleString()} characters written`}
+            : write.characters === 0
+              ? ""
+              : `${write.characters.toLocaleString()} characters written`}
         </p>
       </div>
     </div>

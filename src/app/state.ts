@@ -1,5 +1,5 @@
 import type { AgentInput } from "../agent/index.ts";
-import type { MomentStatus } from "../moments/index.ts";
+import type { MomentInput, MomentStatus } from "../moments/index.ts";
 import type { SessionStatus } from "../omni/index.ts";
 import type { ElementBox } from "../jev/index.ts";
 import type { PhaseName } from "../liveness/index.ts";
@@ -74,7 +74,7 @@ export interface InputRecord {
 /** A guess as the overlay and the driver see it. */
 export interface GuessView {
   elementID: string;
-  action: "click" | "type";
+  action: MomentInput["action"];
   status: MomentStatus;
   clipID: string | null;
   slot: number | null;

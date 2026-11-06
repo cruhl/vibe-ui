@@ -5,7 +5,7 @@ import type { OpenAIAccess } from "../agent/index.ts";
 import type { FalAccess } from "../assets/index.ts";
 import { jevModel, type JevConnection } from "../jev/index.ts";
 import type { ReactorAccess } from "../omni/index.ts";
-import { record } from "../run-log/index.ts";
+import { getRunID, record, rememberSecret } from "../run-log/index.ts";
 import { decodeLinkedKeys, linkParameter } from "./link.ts";
 import { ensurePass, hostedFetch, setPassKey } from "./pass.ts";
 
@@ -54,11 +54,17 @@ const origin = () => location.origin;
 
 const ownFetch: typeof fetch = (input, init) => window.fetch(input, init);
 
+const ownJevFetch: typeof fetch = (input, init) => {
+  const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : {}));
+  headers.set("X-Vibe-Session", getRunID());
+  return window.fetch(input, { ...init, headers });
+};
+
 /** The Jev endpoint, key and model id: the Worker's hosted route, or `/jev` with the own key. */
 export function getJevConnection(keys: Keys): JevConnection {
   return keys.hosted
     ? { baseURL: "/api/jev", key: "hosted", model: jevModel, fetch: hostedFetch }
-    : { baseURL: "/jev", key: keys.typesafe, model: jevModel, fetch: ownFetch };
+    : { baseURL: "/jev", key: keys.typesafe, model: jevModel, fetch: ownJevFetch };
 }
 
 /** Where the agent's calls go: the Worker's hosted route, or OpenAI with the own key. */
@@ -71,7 +77,7 @@ export function getOpenAIAccess(keys: Keys): OpenAIAccess {
 /** How sessions reach Reactor: leases from the Worker, or tokens minted with the own key. */
 export function getReactorAccess(keys: Keys | null): ReactorAccess {
   return keys?.hosted === true
-    ? { kind: "hosted", baseURL: origin(), fetch: hostedFetch }
+    ? { kind: "hosted", baseURL: origin(), fetch: hostedFetch, ready: ensurePass }
     : { kind: "key", key: keys?.reactor ?? "" };
 }
 
@@ -168,6 +174,11 @@ interface KeysState {
 }
 
 const store = createStore<KeysState>(() => ({ own: null, hosted: null }));
+
+store.subscribe(({ own }) => {
+  if (own === null) return;
+  for (const key of [own.reactor, own.openAI, own.typesafe, own.fal]) rememberSecret(key);
+});
 
 /**
  * Reads everything the page runs on, once, before anything asks: keys a link carried, the saved

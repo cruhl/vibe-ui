@@ -34,6 +34,8 @@ function newestBundle(): string | null {
 const viewports = {
   wide: { width: 1440, height: 900, deviceScaleFactor: 1, touch: false },
   narrow: { width: 390, height: 844, deviceScaleFactor: 1, touch: true },
+  laptop: { width: 1280, height: 800, deviceScaleFactor: 1, touch: false },
+  small: { width: 360, height: 740, deviceScaleFactor: 2, touch: true },
 } as const;
 type ViewportName = keyof typeof viewports;
 
@@ -49,7 +51,7 @@ const shotNames = [
 ] as const;
 type ShotName = (typeof shotNames)[number];
 
-const usage = `pnpm record-ui [--round <name>] [--shot <name>]... [--viewport wide|narrow]...
+const usage = `pnpm record-ui [--round <name>] [--shot <name>]... [--viewport wide|narrow|laptop|small]...
     [--bundle <session bundle dir>] [--delays <scale>] [--clicks <n>] [--parallel <n>] [--port N]
 
 Records the app's chrome in every state that matters, headless, with no real provider call: each
@@ -65,8 +67,10 @@ real key reaches the page and no Reactor session can open; the page gets placeho
 
 Shots (default all):
   keys            the bring-your-own keys screen (?keys=1), empty then filled
-  picker          the world picker (?worlds), a card hovered, an idea typed into "Make it", the
-                  create flow writing, then the writer's error (its call is answered 401 after 3 s)
+  picker          the world picker (?worlds): the featured world playing, a card hovered, the
+                  wall of worlds and its foot, an idea typed into "Make it", the create flow
+                  writing, the writer's error (its call is answered 401 after 3 s), then the
+                  picker after the featured world ended (?ended=<id>)
   session         opening busy state, first frame, held frame, then --clicks recorded clicks (default
                   3) each with hover, press acknowledgement, wait and answer
   controls        control bar revealed, pause and play, the direct message box typed and sent, its
@@ -75,7 +79,8 @@ Shots (default all):
   error-refused   the model refuses the opening (?mockFault=refuse:1)
   error-slow      every clip after the opening builds slowly, so a click shows the slow phase
   error-response  every enqueue after the opening is refused, so a click fails
-Viewports (default both): wide 1440x900, narrow 390x844 at 2x.
+Viewports (default wide and narrow): wide 1440x900, narrow 390x844, laptop 1280x800, small
+360x740 at 2x.
 
 Writes .agent/design/recordings/<round>/<shot>-<viewport>.mp4, stills
 <shot>-<viewport>-<nn>-<moment>.png, and index.md listing every video with the second each moment
@@ -116,9 +121,11 @@ if (unknownShot !== undefined || unknownViewport !== undefined) {
 const shots = shotNames.filter(
   (name) => requestedShots.length === 0 || requestedShots.includes(name),
 );
-const viewportNames: readonly ViewportName[] = ["wide", "narrow"];
-const sizes = viewportNames.filter(
-  (name) => requestedViewports.length === 0 || requestedViewports.includes(name),
+const viewportNames: readonly ViewportName[] = ["wide", "narrow", "laptop", "small"];
+const sizes = viewportNames.filter((name) =>
+  requestedViewports.length === 0
+    ? name === "wide" || name === "narrow"
+    : requestedViewports.includes(name),
 );
 const output = join(root, ".agent", "design", "recordings", round);
 mkdirSync(output, { recursive: true });
@@ -421,11 +428,21 @@ const runs: Record<ShotName, ShotRun> = {
     await page.locator('[data-testid="scenario-picker"]').waitFor();
     await sleep(1200);
     await recording.mark("home");
-    const card = page.locator(".picker-card").first();
+    await sleep(2000);
+    await recording.mark("feature-playing");
+    const card = page.locator(".picker-grid .picker-card").first();
+    await card.scrollIntoViewIfNeeded();
     const box = await card.boundingBox();
     if (box !== null) await glide(page, box.x + box.width / 2, box.y + box.height / 3);
-    await sleep(500);
+    await sleep(1800);
     await recording.mark("card-hover");
+    await page.locator(".picker-grid .picker-card").nth(3).scrollIntoViewIfNeeded();
+    await sleep(1500);
+    await recording.mark("wall");
+    await page.locator(".picker-foot").scrollIntoViewIfNeeded();
+    await sleep(800);
+    await recording.mark("foot");
+    const featured = await page.locator(".picker-card").first().getAttribute("data-scenario");
     await page.locator('[data-testid="scenario-idea"]').click();
     await page.keyboard.type("a submarine diner where the fish order lunch", { delay: 30 });
     await sleep(300);
@@ -440,6 +457,11 @@ const runs: Record<ShotName, ShotRun> = {
       .catch(() => undefined);
     await sleep(800);
     await recording.mark("idea-error");
+    if (featured === null) return;
+    await page.goto(`http://127.0.0.1:${port}/?ended=${encodeURIComponent(featured)}`);
+    await page.locator('[data-testid="scenario-picker"]').waitFor();
+    await sleep(2500);
+    await recording.mark("ended");
   },
   session: async (recording, manifest) => {
     const { page } = recording;

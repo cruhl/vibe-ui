@@ -50,7 +50,7 @@ Keep the starting world compact: about six to ten entities, looks of ten to eigh
 
 What the world shows while it works on an answer: one small, quiet chip in a corner, in the world's own voice and visual style, while the held picture stays on screen. Waiting feels like part of the world, never a screen of its own.
 
-- `pitch`: one sentence that sells it on the picker.
+- `pitch`: one short sentence, a dozen words at most, that sells it on the picker.
 - `acknowledge`: how a chosen thing reacts at once: press sinks it, brighten lights it up, wobble jiggles it.
 - `font`: a CSS font family stack that matches the lettering.
 - `colors`: ink for text, panel, edge for borders, accent for progress, glow for light, all taken from the world's style.

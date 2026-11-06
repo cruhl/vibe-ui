@@ -6,6 +6,7 @@ const visibleOps = new Set<Op["op"]>([
   "fact",
   "add",
   "remove",
+  "clear",
   "beat",
   "gag",
   "climb",
@@ -61,6 +62,7 @@ export class Draft {
   private apply(parsed: Parsed): string | null {
     if (!parsed.ok) return parsed.error;
     if (parsed.op.op === "guess") return "a guess header out of place";
+    if (parsed.op.op === "follow") return "a follow-up header out of place";
     const word = this.forbidden(parsed.op);
     if (word !== null) return `the word ${word} is never allowed`;
     const applied = applyOp(this.world, parsed.op);

@@ -1,14 +1,25 @@
 // The public deployment: the built page as static assets, `/jev` for pages on their visitor's own
 // keys, and `/api/*` for hosted play, where the Worker holds the keys as secrets (set with
-// `scripts/deploy.ts --secrets`). Logging stays off. `scripts/deploy.ts` builds, scans and deploys
-// with this file; `--hosted off` deploys with the kill switch thrown.
+// `scripts/deploy.ts --secrets`). Every request and every page's run log is logged (deploy/log.ts):
+// Workers Logs keeps the lines 7 days, and the LOGS bucket keeps each session's run log 30 days by
+// its lifecycle rule (`pnpm logs setup`). `scripts/deploy.ts` builds, scans and deploys with this
+// file; `--hosted off` deploys with the kill switch thrown.
 {
   "name": "vibe-ui",
   "main": "./worker.ts",
   "compatibility_date": "2026-05-01",
+  "compatibility_flags": ["nodejs_als"],
+  // Workers Paid: a streamed answer may use up to 30 s of CPU.
+  "limits": { "cpu_ms": 30000 },
   "workers_dev": true,
   "preview_urls": false,
-  "observability": { "enabled": false },
+  // Workers Logs keeps every console line deploy/log.ts writes; the platform's own per-request
+  // invocation lines are off, since they carry raw headers and client addresses.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false },
+  },
   "assets": {
     "directory": "../dist",
     "binding": "ASSETS",
@@ -29,13 +40,13 @@
     // Daily ceilings on hosted spend, each reset at midnight UTC (deploy/budget.ts meters them).
     // Past one, its route answers 503 until tomorrow; play on a visitor's own keys is never
     // metered. OpenAI tokens (input and output) in all, and from any one /24 or IPv6 /48:
-    "DAILY_OPENAI_TOKENS": "40000000",
-    "DAILY_BLOCK_TOKENS": "4000000",
+    "DAILY_OPENAI_TOKENS": "5000000000",
+    "DAILY_BLOCK_TOKENS": "250000000",
     // Generated images and sounds, Jev calls, and Reactor session-seconds (each session counted
     // at its capped length when it starts, and refunded what it did not use when it ends).
-    "DAILY_IMAGES": "3000",
-    "DAILY_JEV": "20000",
-    "DAILY_REACTOR_SECONDS": "72000",
+    "DAILY_IMAGES": "50000",
+    "DAILY_JEV": "500000",
+    "DAILY_REACTOR_SECONDS": "1000000",
   },
   "durable_objects": {
     "bindings": [
@@ -50,6 +61,7 @@
     { "tag": "v3", "new_sqlite_classes": ["Passes"] },
   ],
   "kv_namespaces": [{ "binding": "WORLDS", "id": "ade287f23b1e48b2bcd6a88da462e477" }],
+  "r2_buckets": [{ "binding": "LOGS", "bucket_name": "vibe-ui-logs" }],
   // Per-visitor request limits, each counted per client address.
   "ratelimits": [
     { "name": "LIMIT_PASS", "namespace_id": "4110", "simple": { "limit": 12, "period": 60 } },
@@ -58,5 +70,6 @@
     { "name": "LIMIT_FAL", "namespace_id": "4103", "simple": { "limit": 30, "period": 60 } },
     { "name": "LIMIT_SESSIONS", "namespace_id": "4104", "simple": { "limit": 20, "period": 60 } },
     { "name": "LIMIT_WORLDS", "namespace_id": "4105", "simple": { "limit": 30, "period": 60 } },
+    { "name": "LIMIT_LOG", "namespace_id": "4106", "simple": { "limit": 90, "period": 60 } },
   ],
 }

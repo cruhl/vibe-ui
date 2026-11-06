@@ -50,7 +50,13 @@ export interface Pacing {
 
 const stallKinds = ["stall", "deadline_missed", "build_stall", "play_stall", "eval_stall"];
 const refusalKinds = ["enqueue_refused", "command_error", "clip_failed"];
-const failureKinds = ["agent_failed", "enqueue_failed", "play_command_failed", "eval_user_failed"];
+const failureKinds = [
+  "agent_failed",
+  "agent_refused",
+  "enqueue_failed",
+  "play_command_failed",
+  "eval_user_failed",
+];
 const warningKinds = ["boxes_failed", "input_ignored", "retry", "black_frame"];
 
 const text = (value: unknown) => (typeof value === "string" ? value : "");
